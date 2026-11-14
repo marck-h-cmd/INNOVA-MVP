@@ -45,7 +45,12 @@ function createRotatedRect(cx: number, cz: number, w: number, d: number, angleDe
 // ============================================================
 // PERÍMETRO DEL CAMPUS UNT
 // ============================================================
-export const campusBoundary = [
+export const MIRROR_Z = (z: number): number => Math.round((468 - z) * 10) / 10;
+
+export const mirrorPoly = (pts: [number, number][]): [number, number][] =>
+  pts.map(([x, z]) => [x, MIRROR_Z(z)] as [number, number]).reverse();
+
+const rawCampusBoundary: [number, number][] = [
   [12, 12],
   [12, 120],
   [16, 260],
@@ -64,16 +69,18 @@ export const campusBoundary = [
   [12, 12],
 ];
 
+export const campusBoundary = mirrorPoly(rawCampusBoundary);
+
 // ============================================================
 // COMPLEJO DEPORTIVO (ESTADIO TILTED 36°, PISCINA, CANCHAS)
 // El estadio está en ángulo/de lado (~36°) como muestra el plano CAD
 // ============================================================
-export const sportsComplex = {
+const rawSportsComplex = {
   // Estadio UNT / Pista atlética
   stadium: {
     id: 'estadio-unt',
     name: 'Estadio UNT / Pista Atlética Olímpica',
-    center: [142, 126],
+    center: [142, 126] as [number, number],
     radiusX: 72,
     radiusZ: 44,
     angleDeg: 36, // Rotación exacta del plano CAD
@@ -83,7 +90,7 @@ export const sportsComplex = {
   pitch: {
     id: 'cancha-futbol',
     name: 'Campo de Fútbol Oficial UNT',
-    center: [142, 126],
+    center: [142, 126] as [number, number],
     width: 92,
     depth: 54,
     angleDeg: 36,
@@ -114,7 +121,7 @@ export const sportsComplex = {
     {
       id: 'losa-deportiva-1',
       name: 'Losa Multideportiva A',
-      center: [84, 182],
+      center: [84, 182] as [number, number],
       width: 28,
       depth: 18,
       angleDeg: 36,
@@ -124,7 +131,7 @@ export const sportsComplex = {
     {
       id: 'losa-deportiva-2',
       name: 'Losa Multideportiva B',
-      center: [100, 204],
+      center: [100, 204] as [number, number],
       width: 28,
       depth: 18,
       angleDeg: 36,
@@ -136,26 +143,58 @@ export const sportsComplex = {
   pool: {
     id: 'piscina-unt',
     name: 'Piscina Universitaria y Gimnasio',
-    center: [78, 255],
+    center: [78, 255] as [number, number],
     width: 32,
     depth: 18,
-    polygon: [[62, 246], [94, 246], [94, 264], [62, 264]],
+    polygon: [[62, 246], [94, 246], [94, 264], [62, 264]] as [number, number][],
     color: '#0288d1',
+  },
+};
+
+export const sportsComplex = {
+  stadium: {
+    ...rawSportsComplex.stadium,
+    center: [rawSportsComplex.stadium.center[0], MIRROR_Z(rawSportsComplex.stadium.center[1])] as [number, number],
+    angleDeg: -rawSportsComplex.stadium.angleDeg,
+  },
+  pitch: {
+    ...rawSportsComplex.pitch,
+    center: [rawSportsComplex.pitch.center[0], MIRROR_Z(rawSportsComplex.pitch.center[1])] as [number, number],
+    angleDeg: -rawSportsComplex.pitch.angleDeg,
+  },
+  grandstandNW: {
+    ...rawSportsComplex.grandstandNW,
+    polygon: mirrorPoly(rawSportsComplex.grandstandNW.polygon),
+  },
+  grandstandSE: {
+    ...rawSportsComplex.grandstandSE,
+    polygon: mirrorPoly(rawSportsComplex.grandstandSE.polygon),
+  },
+  courts: rawSportsComplex.courts.map((c) => ({
+    ...c,
+    center: [c.center[0], MIRROR_Z(c.center[1])] as [number, number],
+    angleDeg: -c.angleDeg,
+    polygon: mirrorPoly(c.polygon),
+  })),
+  pool: {
+    ...rawSportsComplex.pool,
+    center: [rawSportsComplex.pool.center[0], MIRROR_Z(rawSportsComplex.pool.center[1])] as [number, number],
+    polygon: mirrorPoly(rawSportsComplex.pool.polygon),
   },
 };
 
 // ============================================================
 // EDIFICIOS 3D (CADA UNO IDENTIFICADO CON SU FORMA EXACTA DEL CAD)
 // ============================================================
-export const buildings: Building3DDefinition[] = [
+const rawBuildings: Building3DDefinition[] = [
   // ----------------------------------------------------------
-  // 1. SECTOR NOROESTE (Pabellones de Aulas Generales NW)
-  // Dos pabellones paralelos en forma de 'H' o peine con puente
+  // 1. SECTOR NOROESTE (Facultad de Enfermería y Laboratorios de Farmacia)
+  // Pabellón de aulas generales 'H' con conector y bloque de laboratorios
   // ----------------------------------------------------------
   {
     id: 'pabellon-aulas-nw-1',
-    name: 'Pabellón Aulas Generales NW (Bloque 1)',
-    category: 'Aulas Generales',
+    name: 'Facultad de Enfermería',
+    category: 'Facultad de Enfermería',
     type: 'academic',
     polygon: [[45, 330], [68, 330], [68, 420], [45, 420]],
     height: 11,
@@ -164,8 +203,8 @@ export const buildings: Building3DDefinition[] = [
   },
   {
     id: 'pabellon-aulas-nw-2',
-    name: 'Pabellón Aulas Generales NW (Bloque 2)',
-    category: 'Aulas Generales',
+    name: 'Facultad de Enfermería (Bloque 2)',
+    category: 'Facultad de Enfermería',
     type: 'academic',
     polygon: [[82, 330], [105, 330], [105, 420], [82, 420]],
     height: 11,
@@ -174,8 +213,8 @@ export const buildings: Building3DDefinition[] = [
   },
   {
     id: 'conector-nw',
-    name: 'Conector Central Aulas NW',
-    category: 'Aulas Generales',
+    name: 'Conector Facultad de Enfermería',
+    category: 'Facultad de Enfermería',
     type: 'academic',
     polygon: [[68, 368], [82, 368], [82, 384], [68, 384]],
     height: 9,
@@ -184,8 +223,8 @@ export const buildings: Building3DDefinition[] = [
   },
   {
     id: 'talleres-nw',
-    name: 'Talleres y Laboratorios NW',
-    category: 'Talleres y Laboratorios',
+    name: 'Laboratorios de Farmacia',
+    category: 'Laboratorios de Farmacia y Bioquímica',
     type: 'lab',
     polygon: [[115, 375], [165, 375], [165, 415], [115, 415]],
     height: 8,
@@ -374,36 +413,6 @@ export const buildings: Building3DDefinition[] = [
   // Rueda radial de 8 rayos y facultades adyacentes
   // ----------------------------------------------------------
   {
-    id: 'facultad-medicina',
-    name: 'Facultad de Medicina',
-    category: 'Ciencias Médicas',
-    type: 'academic',
-    polygon: [[465, 140], [515, 140], [515, 215], [465, 215]],
-    height: 16,
-    color: '#90a4ae',
-    roofColor: '#546e7a',
-  },
-  {
-    id: 'facultad-farmacia',
-    name: 'Facultad de Farmacia y Bioquímica',
-    category: 'Ciencias de la Salud',
-    type: 'academic',
-    polygon: [[465, 225], [515, 225], [515, 285], [465, 285]],
-    height: 14,
-    color: '#90a4ae',
-    roofColor: '#546e7a',
-  },
-  {
-    id: 'facultad-enfermeria',
-    name: 'Facultad de Enfermería',
-    category: 'Ciencias de la Salud',
-    type: 'academic',
-    polygon: [[475, 295], [525, 295], [525, 345], [475, 345]],
-    height: 13,
-    color: '#90a4ae',
-    roofColor: '#546e7a',
-  },
-  {
     id: 'facultad-derecho',
     name: 'Facultad de Derecho y Ciencias Políticas',
     category: 'Facultad Académica',
@@ -548,112 +557,144 @@ export const buildings: Building3DDefinition[] = [
   },
 ];
 
+export const buildings: Building3DDefinition[] = rawBuildings.map((b) => {
+  if (b.isOctagon && b.center) {
+    return {
+      ...b,
+      center: [b.center[0], MIRROR_Z(b.center[1])] as [number, number],
+    };
+  }
+  if (b.polygon) {
+    return {
+      ...b,
+      polygon: mirrorPoly(b.polygon),
+    };
+  }
+  return b;
+});
+
 // ============================================================
 // ROTONDA / PLAZA CENTRAL (WHEEL DE 8 RAYOS DEL PLANO CAD)
 // ============================================================
-export const rotonda = {
+const rawRotonda = {
   id: 'rotonda-unt',
   name: 'Plaza de la Integración (La Rotonda)',
-  center: [520, 175],
+  center: [520, 175] as [number, number],
   outerRadius: 32,
   innerRadius: 12,
   hubRadius: 5.5,
   spokes: 8,
 };
 
+export const rotonda = {
+  ...rawRotonda,
+  center: [rawRotonda.center[0], MIRROR_Z(rawRotonda.center[1])] as [number, number],
+};
+
 // ============================================================
 // ZONAS DE ESTACIONAMIENTO (RAYAS DIAGONALES AMARILLAS EN CAD)
 // ============================================================
-export const parkingLots = [
+const rawParkingLots = [
   // Estacionamiento junto al estadio
   {
     id: 'estacionamiento-estadio',
     name: 'Estacionamiento Estadio',
-    center: [215, 115],
+    center: [215, 115] as [number, number],
     width: 20,
     depth: 60,
     angleDeg: 0,
-    polygon: [[205, 85], [225, 85], [225, 145], [205, 145]],
+    polygon: [[205, 85], [225, 85], [225, 145], [205, 145]] as [number, number][],
   },
   // Estacionamiento Sur (Económicas)
   {
     id: 'estacionamiento-economicas',
     name: 'Estacionamiento Ciencias Económicas',
-    polygon: [[525, 95], [550, 95], [550, 145], [525, 145]],
+    polygon: [[525, 95], [550, 95], [550, 145], [525, 145]] as [number, number][],
   },
 ];
+
+export const parkingLots = rawParkingLots.map((lot) => ({
+  ...lot,
+  ...(lot.center ? { center: [lot.center[0], MIRROR_Z(lot.center[1])] as [number, number] } : {}),
+  polygon: mirrorPoly(lot.polygon),
+}));
 
 // ============================================================
 // ZONAS VERDES Y PARQUES DEL CAMPUS
 // ============================================================
-export const greenAreas = [
+const rawGreenAreas = [
   // Gran área verde que rodea el estadio en ángulo
   {
     id: 'parque-estadio-sw',
     name: 'Área Verde Perimetral del Estadio',
     type: 'park',
-    polygon: [[20, 20], [195, 20], [195, 60], [90, 60], [90, 110], [20, 110]],
+    polygon: [[20, 20], [195, 20], [195, 60], [90, 60], [90, 110], [20, 110]] as [number, number][],
   },
   // Parque de Materiales (Centro del campus, frondoso)
   {
     id: 'parque-materiales',
     name: 'Parque de Materiales UNT',
     type: 'park',
-    polygon: [[290, 218], [350, 218], [350, 240], [290, 240]],
+    polygon: [[290, 218], [350, 218], [350, 240], [290, 240]] as [number, number][],
   },
   // Parque de Derecho (Alrededor de la Rotonda)
   {
     id: 'parque-derecho',
     name: 'Parque de Derecho y Ciencias Políticas',
     type: 'park',
-    polygon: [[525, 210], [550, 210], [550, 260], [525, 260]],
+    polygon: [[525, 210], [550, 210], [550, 260], [525, 260]] as [number, number][],
   },
   // Jardín Central Norte (Frente a Rectorado)
   {
     id: 'jardin-rectorado',
     name: 'Jardín Frontal de Rectorado',
     type: 'garden',
-    polygon: [[340, 412], [420, 412], [420, 428], [340, 428]],
+    polygon: [[340, 412], [420, 412], [420, 428], [340, 428]] as [number, number][],
   },
   // Jardín Este (Alrededor del edificio octogonal)
   {
     id: 'jardin-octogonal',
     name: 'Jardín de Ciencias Biológicas',
     type: 'garden',
-    polygon: [[615, 135], [670, 135], [670, 160], [615, 160]],
+    polygon: [[615, 135], [670, 135], [670, 160], [615, 160]] as [number, number][],
   },
   // Jardines longitudinales Av. Juan Pablo II
   {
     id: 'jardin-juan-pablo',
     name: 'Banda Verde Av. Juan Pablo II',
     type: 'lawn',
-    polygon: [[200, 25], [670, 25], [670, 40], [200, 40]],
+    polygon: [[200, 25], [670, 25], [670, 40], [200, 40]] as [number, number][],
   },
 ];
+
+export const greenAreas = rawGreenAreas.map((area) => ({
+  ...area,
+  polygon: mirrorPoly(area.polygon),
+}));
 
 // ============================================================
 // RED DE CAMINOS Y VÍAS (LÍNEAS AMARILLAS EXACTAS DEL CAD)
 // ============================================================
-export const paths = [
+const rawPaths = [
   // 1. Av. Juan Pablo II (Avenida Sur doble vía con berma)
   {
     id: 'av-juan-pablo-sur',
     name: 'Av. Juan Pablo II',
-    points: [[15, 18], [150, 18], [300, 18], [500, 18], [690, 18]],
+    points: [[15, 18], [150, 18], [300, 18], [500, 18], [690, 18]] as [number, number][],
     width: 14,
   },
   // 2. Av. Jesús de Nazareth (Avenida Norte)
   {
     id: 'av-jesus-nazareth',
     name: 'Av. Jesús de Nazareth',
-    points: [[25, 450], [200, 450], [400, 450], [600, 450], [695, 450]],
+    points: [[25, 450], [200, 450], [400, 450], [600, 450], [695, 450]] as [number, number][],
     width: 12,
   },
   // 3. Av. América Oeste / Antenor Orrego (Avenida Oeste con Óvalo)
   {
     id: 'av-america-oeste',
     name: 'Av. América Oeste / Antenor Orrego',
-    points: [[16, 25], [16, 120], [18, 250], [22, 380], [26, 450]],
+    points: [[16, 25], [16, 120], [18, 250], [22, 380], [26, 450]] as [number, number][],
     width: 12,
   },
   // 4. Camino curvo diagonal que bordea CEE Narváez hacia el centro
@@ -667,7 +708,7 @@ export const paths = [
       [205, 255],
       [245, 235],
       [290, 235],
-    ],
+    ] as [number, number][],
     width: 7,
   },
   // 5. Vía perimetral del estadio en ángulo
@@ -684,50 +725,58 @@ export const paths = [
       [125, 50],
       [65, 85],
       [55, 155],
-    ],
+    ] as [number, number][],
     width: 6,
   },
   // 6. Eje Central Norte-Sur (De Puerta 4 a Av. Juan Pablo II)
   {
     id: 'eje-central-ns',
     name: 'Eje Peatonal Central Norte-Sur',
-    points: [[430, 450], [430, 360], [430, 245], [430, 140], [430, 20]],
+    points: [[430, 450], [430, 360], [430, 245], [430, 140], [430, 20]] as [number, number][],
     width: 8,
   },
   // 7. Eje Transversal Central (De la Pirámide a la Rotonda)
   {
     id: 'eje-transversal-centro',
     name: 'Eje Transversal Central',
-    points: [[290, 235], [350, 235], [430, 235], [520, 235], [640, 235]],
+    points: [[290, 235], [350, 235], [430, 235], [520, 235], [640, 235]] as [number, number][],
     width: 8,
   },
-  // 8. Paseo del Auditorio a Medicina y Farmacia
+  // 8. Paseo del Auditorio hacia Sector Este
   {
     id: 'paseo-salud',
-    name: 'Paseo de Ciencias Médicas',
-    points: [[460, 235], [460, 140], [520, 140], [520, 90]],
+    name: 'Paseo Peatonal Central Este',
+    points: [[460, 235], [460, 140], [520, 140], [520, 90]] as [number, number][],
     width: 6,
   },
   // 9. Paseo Este (Hacia edificio octogonal y laboratorios)
   {
     id: 'paseo-este-octogonal',
     name: 'Paseo de Ciencias Biológicas',
-    points: [[520, 175], [580, 175], [642, 175], [685, 175]],
+    points: [[520, 175], [580, 175], [642, 175], [685, 175]] as [number, number][],
     width: 7,
   },
   // 10. Paseo Norte de Ingeniería a Rectorado
   {
     id: 'paseo-ingenieria-rectorado',
     name: 'Paseo de Facultades de Ingeniería',
-    points: [[290, 305], [350, 305], [430, 305], [530, 305]],
+    points: [[290, 305], [350, 305], [430, 305], [530, 305]] as [number, number][],
     width: 6,
   },
 ];
 
+export const paths = rawPaths.map((p) => ({
+  ...p,
+  points: p.points.map(([x, z]) => [x, MIRROR_Z(z)] as [number, number]),
+}));
+
 // ============================================================
 // ÁRBOLES 3D (DISTRIBUIDOS SEGÚN EL PLANO CAD Y VISTA SATELITAL)
 // ============================================================
-export const trees = generateTrees();
+export const trees = generateTrees().map((t) => ({
+  ...t,
+  z: MIRROR_Z(t.z),
+}));
 
 export interface Tree3DData {
   id: string;
@@ -817,12 +866,7 @@ export const labels = [
   ...buildings
     .filter(
       b =>
-        !b.id.includes('narvaez') &&
-        !b.id.includes('conector') &&
-        !b.id.startsWith('pabellon-aulas-nw') &&
-        !b.id.startsWith('talleres-nw') &&
-        !b.name.includes('Narváez') &&
-        !b.name.includes('CEE')
+        !b.id.includes('conector')
     )
     .map((b) => {
       let cx = 0, cz = 0;
@@ -872,7 +916,9 @@ export const FACILITY_3D_MAPPING: Record<string, string> = {
   'pabellon-aulas-nw-2': 'ED-01',
   'talleres-nw': 'ED-02',
   'biblioteca-central': 'ED-03',
+  'rectorado-unt': 'ED-04',
   'rectorado': 'ED-04',
+  'facultad-ciencias-economicas': 'ED-05',
   'ciencias-economicas': 'ED-05',
 };
 
@@ -880,7 +926,194 @@ export const NEXO_FACILITY_TO_3D: Record<string, string> = {
   'ED-01': 'pabellon-aulas-nw-1',
   'ED-02': 'talleres-nw',
   'ED-03': 'biblioteca-central',
-  'ED-04': 'rectorado',
-  'ED-05': 'ciencias-economicas',
+  'ED-04': 'rectorado-unt',
+  'ED-05': 'facultad-ciencias-economicas',
 };
+
+export function getBuildingCode(b: { id: string; code?: string; name?: string }): string {
+  if (b.code) return b.code;
+  if (FACILITY_3D_MAPPING[b.id]) return FACILITY_3D_MAPPING[b.id];
+  const codeMap: Record<string, string> = {
+    'pabellon-aulas-nw-1': 'ED-01',
+    'pabellon-aulas-nw-2': 'ED-01B',
+    'conector-nw': 'CON-NW',
+    'talleres-nw': 'ED-02',
+    'pabellon-nw-diagonal': 'AGRO',
+    'edificio-diagonal-1': 'TOPICO',
+    'edificio-diagonal-2': 'GIMNASIO',
+    'vestuarios-deporte': 'VEST',
+    'servicios-generales': 'SRV-GEN',
+    'comedor-universitario': 'COMEDOR',
+    'bienestar-universitario': 'BIENESTAR',
+    'facultad-ciencias-economicas': 'ED-05',
+    'ciencias-economicas': 'ED-05',
+    'aulas-economicas-sur': 'AULAS-ECO',
+    'facultad-educacion': 'FAC-EDU',
+    'ciencias-sociales': 'FAC-SOC',
+    'auditorio-teatro-unt': 'AUD-CEN',
+    'auditorio-central': 'AUD-CEN',
+    'facultad-ingenieria-civil': 'ING-CIV',
+    'laboratorios-ingenieria': 'LAB-ING',
+    'facultad-ciencias-fisicas': 'FAC-FIS',
+    'biblioteca-central': 'ED-03',
+    'facultad-derecho': 'FAC-DER',
+    'derecho-ciencias-politicas': 'FAC-DER',
+    'escuela-posgrado': 'POSGRADO',
+    'edificio-octogonal-biologicas': 'FAC-BIO',
+    'ciencias-biologicas': 'FAC-BIO',
+    'pergola-este': 'PERGOLA',
+    'ingenieria-quimica': 'ING-QUI',
+    'centro-idiomas': 'IDIOMAS',
+    'pabellon-verde-ne': 'PAB-NE',
+    'facultad-letras-este': 'FAC-LET',
+    'rectorado-unt': 'ED-04',
+    'rectorado': 'ED-04',
+    'puerta-4-nazareth': 'ACC-4',
+    'rotonda-unt': 'ROTONDA',
+    'estadio-unt': 'ESTADIO',
+    'cancha-futbol': 'CANCHA',
+    'piscina-unt': 'PISCINA',
+    'tribuna-nw': 'TRIB-NW',
+    'tribuna-se': 'TRIB-SE',
+    'losa-deportiva-1': 'LOSA-1',
+    'losa-deportiva-2': 'LOSA-2',
+  };
+  return codeMap[b.id] || b.id.slice(0, 8).toUpperCase();
+}
+
+// ============================================================
+// CANALES Y ZONAS DELIMITADAS DE ANÉGAMIENTO PLUVIAL (SIN TAPAR TODO EL MAPA)
+// ============================================================
+export interface FloodRiskZone3D {
+  id: string;
+  code: string;
+  name: string;
+  type: 'canal' | 'pozo' | 'acceso';
+  center: [number, number]; // [x, z]
+  width: number;
+  depth: number;
+  angleDeg?: number;
+  minRain: number; // lluvia mínima % para empozar
+  description: string;
+}
+
+const rawFloodRiskZones: FloodRiskZone3D[] = [
+  {
+    id: 'ZONE-CANAL-CENTRAL',
+    code: 'CN-01',
+    name: 'Canal Pluvial Eje Central',
+    type: 'canal',
+    center: [305, 235],
+    width: 22,
+    depth: 135,
+    angleDeg: 0,
+    minRain: 25,
+    description: 'Canal de drenaje pluvial central entre Biblioteca y Rotonda.',
+  },
+  {
+    id: 'ZONE-ACC-1',
+    code: 'PZ-ACC1',
+    name: 'Empozamiento Acceso 1 (Norte / Av. América)',
+    type: 'acceso',
+    center: [85, 42],
+    width: 48,
+    depth: 32,
+    angleDeg: 0,
+    minRain: 40,
+    description: 'Anegamiento en vía perimetral e ingreso norte por lluvias intensas.',
+  },
+  {
+    id: 'ZONE-ACC-2',
+    code: 'PZ-ACC2',
+    name: 'Empozamiento Acceso 2 (Oeste / Av. Antenor Orrego)',
+    type: 'acceso',
+    center: [45, 270],
+    width: 42,
+    depth: 34,
+    angleDeg: 0,
+    minRain: 45,
+    description: 'Punto bajo de escorrentía en el ingreso oeste.',
+  },
+  {
+    id: 'ZONE-ACC-3',
+    code: 'PZ-ACC3',
+    name: 'Empozamiento Acceso 3 (Sur / Av. Juan Pablo II)',
+    type: 'acceso',
+    center: [75, 430],
+    width: 45,
+    depth: 35,
+    angleDeg: 0,
+    minRain: 40,
+    description: 'Acumulación de agua en acceso sur frente a Juan Pablo II.',
+  },
+  {
+    id: 'ZONE-SEG-A2',
+    code: 'PZ-NORTE',
+    name: 'Anegamiento Corredor Norte hacia PF-01',
+    type: 'pozo',
+    center: [190, 85],
+    width: 65,
+    depth: 38,
+    angleDeg: 15,
+    minRain: 60,
+    description: 'Tramo de vía interna con drenaje saturado que condiciona acceso a aulas.',
+  },
+  {
+    id: 'ZONE-SEG-E2',
+    code: 'PZ-SUR',
+    name: 'Anegamiento Corredor Sur hacia PF-02',
+    type: 'pozo',
+    center: [305, 395],
+    width: 75,
+    depth: 42,
+    angleDeg: 0,
+    minRain: 60,
+    description: 'Corredor abierto hacia zona de resguardo sur afectado por acumulación de agua.',
+  },
+  {
+    id: 'ZONE-CANAL-DEP',
+    code: 'CN-DEP',
+    name: 'Zanja de Alivio Complejo Deportivo',
+    type: 'canal',
+    center: [105, 235],
+    width: 32,
+    depth: 48,
+    angleDeg: 36,
+    minRain: 35,
+    description: 'Zona deprimida de escorrentía junto a piscina y vestuarios.',
+  },
+];
+
+export const FLOOD_RISK_ZONES: FloodRiskZone3D[] = rawFloodRiskZones.map((z) => ({
+  ...z,
+  center: [z.center[0], MIRROR_Z(z.center[1])] as [number, number],
+  angleDeg: z.angleDeg !== undefined ? -z.angleDeg : undefined,
+}));
+
+// ============================================================
+// NODOS DE ACCESO Y PUNTOS DE ENCUENTRO
+// ============================================================
+export interface CampusNode3D {
+  id: string;
+  code: string;
+  name: string;
+  type: 'access' | 'meeting_point';
+  x: number;
+  z: number;
+  y: number;
+}
+
+const rawCampusNodes: CampusNode3D[] = [
+  { id: 'ACC-1', code: 'ACC-1', name: 'Acceso 1 (Norte)', type: 'access', x: 85, z: 42, y: 1.5 },
+  { id: 'ACC-2', code: 'ACC-2', name: 'Acceso 2 (Oeste)', type: 'access', x: 45, z: 270, y: 1.5 },
+  { id: 'ACC-3', code: 'ACC-3', name: 'Acceso 3 (Sur)', type: 'access', x: 75, z: 430, y: 1.5 },
+  { id: 'PF-01', code: 'PF-01', name: 'Punto de Encuentro Norte', type: 'meeting_point', x: 280, z: 52, y: 2.0 },
+  { id: 'PF-02', code: 'PF-02', name: 'Punto de Encuentro Sur', type: 'meeting_point', x: 420, z: 415, y: 2.0 },
+];
+
+export const CAMPUS_NODES_3D: CampusNode3D[] = rawCampusNodes.map((n) => ({
+  ...n,
+  z: MIRROR_Z(n.z),
+}));
+
 

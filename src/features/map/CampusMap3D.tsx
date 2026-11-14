@@ -6,13 +6,18 @@ import {
   Activity,
   AlertTriangle,
   Building2,
+  Check,
+  ChevronDown,
   Compass as CompassIcon,
   Droplets,
   Eye,
   EyeOff,
+  Layers,
   Maximize2,
+  Minimize2,
   RotateCcw,
   ShieldCheck,
+  SlidersHorizontal,
   Sun,
   X,
   Zap,
@@ -25,6 +30,7 @@ import {
   SERVICES,
 } from '../../data/seedData';
 import { StatusBadge } from '../../components/ui/StatusBadge';
+import { ServiceStatus } from '../../types/domain';
 import {
   buildings,
   sportsComplex,
@@ -36,6 +42,9 @@ import {
   labels,
   campusBoundary,
   FACILITY_3D_MAPPING,
+  getBuildingCode,
+  FLOOD_RISK_ZONES,
+  CAMPUS_NODES_3D,
   Building3DDefinition,
 } from './data/campus3dData';
 
@@ -49,6 +58,7 @@ interface LayerState {
 }
 
 export function CampusMap3D() {
+  const wrapperRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const compassCanvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -59,6 +69,65 @@ export function CampusMap3D() {
   const [selectedBuilding, setSelectedBuilding] = useState<Building3DDefinition | null>(null);
   const [hoveredBuilding, setHoveredBuilding] = useState<Building3DDefinition | null>(null);
   const [hourOfDay, setHourOfDay] = useState<number>(10.5);
+  const [showControls, setShowControls] = useState<boolean>(true);
+  const [scenarioDropdownOpen, setScenarioDropdownOpen] = useState<boolean>(false);
+  const scenarioMenuRef = useRef<HTMLDivElement>(null);
+
+  // Fullscreen and UI Visibility State
+  const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
+  const [hideAllMenus, setHideAllMenus] = useState<boolean>(false);
+
+  // Toggle Fullscreen handler
+  const toggleFullscreen = async () => {
+    try {
+      if (!document.fullscreenElement) {
+        if (wrapperRef.current) {
+          if (wrapperRef.current.requestFullscreen) {
+            await wrapperRef.current.requestFullscreen();
+          } else if ((wrapperRef.current as HTMLElement & { webkitRequestFullscreen?: () => Promise<void> }).webkitRequestFullscreen) {
+            await (wrapperRef.current as HTMLElement & { webkitRequestFullscreen: () => Promise<void> }).webkitRequestFullscreen();
+          }
+        }
+      } else {
+        if (document.exitFullscreen) {
+          await document.exitFullscreen();
+        } else if ((document as Document & { webkitExitFullscreen?: () => Promise<void> }).webkitExitFullscreen) {
+          await (document as Document & { webkitExitFullscreen: () => Promise<void> }).webkitExitFullscreen();
+        }
+      }
+    } catch (err) {
+      console.error('Error toggling fullscreen:', err);
+    }
+  };
+
+  // Sync fullscreen state with document events
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+      document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
+    };
+  }, []);
+
+  // Close scenario menu when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (scenarioMenuRef.current && !scenarioMenuRef.current.contains(event.target as Node)) {
+        setScenarioDropdownOpen(false);
+      }
+    }
+    if (scenarioDropdownOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [scenarioDropdownOpen]);
+
   const [layers, setLayers] = useState<LayerState>({
     buildings: true,
     greenAreas: true,
@@ -68,12 +137,15 @@ export function CampusMap3D() {
     floodWater: true,
   });
 
-  // Reference to 3D scene elements to update on state change
+  // Scene references
   const sceneRef = useRef<THREE.Scene | null>(null);
   const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
   const controlsRef = useRef<OrbitControls | null>(null);
   const layerGroupsRef = useRef<Record<string, THREE.Group>>({});
-  const waterMeshRef = useRef<THREE.Mesh | null>(null);
+  const floodPuddlesGroupRef = useRef<THREE.Group | null>(null);
+  const roofMeshesRef = useRef<Map<string, { mesh: THREE.Mesh; baseColor: THREE.Color }>>(new Map());
+  const buildingBodyMeshesRef = useRef<Map<string, { mesh: THREE.Mesh; baseColor: THREE.Color }>>(new Map());
+  const labelBadgesRef = useRef<Map<string, HTMLElement>>(new Map());
   const skyUpdateFnRef = useRef<((h: number, rain: number) => void) | null>(null);
   const buildingMeshesRef = useRef<THREE.Mesh[]>([]);
 
@@ -86,47 +158,172 @@ export function CampusMap3D() {
       const next = { ...prev, [key]: !prev[key] };
       const group = layerGroupsRef.current[key];
       if (group) group.visible = next[key];
-      if (key === 'floodWater' && waterMeshRef.current) {
-        waterMeshRef.current.visible = next[key];
+      if (key === 'floodWater' && floodPuddlesGroupRef.current) {
+        floodPuddlesGroupRef.current.visible = next[key];
       }
       return next;
     });
   };
 
-  // Reset Camera View
+  // Reset Camera View (Perspectiva Isométrica natural alineada al Campus UNT)
   const resetCamera = () => {
     if (cameraRef.current && controlsRef.current) {
-      cameraRef.current.position.set(360, 420, -140);
-      controlsRef.current.target.set(360, 0, 240);
+      cameraRef.current.up.set(0, 1, 0);
+      cameraRef.current.position.set(-80, 520, 234);
+      controlsRef.current.target.set(380, 0, 234);
       controlsRef.current.update();
     }
   };
 
-  // Top-down Zenith View
+  // Top-down Zenith View (Cenital con Norte hacia arriba)
   const setTopDownView = () => {
     if (cameraRef.current && controlsRef.current) {
-      cameraRef.current.position.set(360, 750, 240);
-      controlsRef.current.target.set(360, 0, 240);
+      cameraRef.current.position.set(380, 850, 234.01);
+      cameraRef.current.up.set(1, 0, 0); // Eje +X (Norte hacia arriba)
+      controlsRef.current.target.set(380, 0, 234);
       controlsRef.current.update();
     }
   };
 
-  // Update water elevation based on rain intensity and toggle
-  useEffect(() => {
-    if (waterMeshRef.current) {
-      if (rainIntensity >= 25 && layers.floodWater) {
-        waterMeshRef.current.visible = true;
-        // Height from 0.05m to 2.2m depending on rain intensity (25% to 100%)
-        const targetY = 0.05 + ((rainIntensity - 25) / 75) * 1.8;
-        waterMeshRef.current.position.y = targetY;
-      } else {
-        waterMeshRef.current.visible = false;
-      }
+  // Calculate facility risk status & color identical to DidacticCampusPlan (Plano Didáctico 2D)
+  const getBuildingRiskInfo = (buildingId: string) => {
+    const facId = FACILITY_3D_MAPPING[buildingId];
+    if (!facId) {
+      return {
+        status: 'OPERATIVO' as ServiceStatus,
+        color: '#178353',
+        label: 'Operativo',
+        isCritical: false,
+      };
     }
+    const fac = FACILITIES.find((f) => f.id === facId);
+    if (!fac) {
+      return {
+        status: 'OPERATIVO' as ServiceStatus,
+        color: '#178353',
+        label: 'Operativo',
+        isCritical: false,
+      };
+    }
+
+    const statuses = fac.serviceIds.map(
+      (id) => activeScenario.serviceOverrides[id] ?? dependencyGraph.nodes[id]?.effectiveStatus ?? 'OPERATIVO',
+    );
+
+    if (statuses.includes('NO_DISPONIBLE')) {
+      return {
+        status: 'NO_DISPONIBLE' as ServiceStatus,
+        color: '#B62C49', // Red / Critical
+        label: 'No disponible (Riesgo alto)',
+        isCritical: true,
+      };
+    }
+    if (statuses.includes('LIMITADO')) {
+      return {
+        status: 'LIMITADO' as ServiceStatus,
+        color: '#C25B2B', // Orange / Moderate-high
+        label: 'Limitado',
+        isCritical: false,
+      };
+    }
+    if (
+      statuses.includes('EN_OBSERVACION') ||
+      statuses.includes('SIN_CONFIRMAR') ||
+      fac.serviceIds.some((id) => dependencyGraph.nodes[id]?.requiresVerification)
+    ) {
+      return {
+        status: 'EN_OBSERVACION' as ServiceStatus,
+        color: '#A96A00', // Amber / Verification
+        label: 'Requiere verificación',
+        isCritical: false,
+      };
+    }
+    return {
+      status: 'OPERATIVO' as ServiceStatus,
+      color: '#178353', // Green / Operativo
+      label: 'Operativo',
+      isCritical: false,
+    };
+  };
+
+  // Dynamically update building roof colors & labels when scenario changes
+  useEffect(() => {
+    roofMeshesRef.current.forEach(({ mesh, baseColor }, buildingId) => {
+      const risk = getBuildingRiskInfo(buildingId);
+      const mat = mesh.material as THREE.MeshStandardMaterial;
+
+      if (risk.status === 'NO_DISPONIBLE') {
+        mat.color.set(0xb62c49);
+        mat.emissive.set(0x801020);
+        mat.emissiveIntensity = 0.45;
+      } else if (risk.status === 'LIMITADO') {
+        mat.color.set(0xc25b2b);
+        mat.emissive.set(0x602008);
+        mat.emissiveIntensity = 0.3;
+      } else if (risk.status === 'EN_OBSERVACION') {
+        mat.color.set(0xa96a00);
+        mat.emissive.set(0x4a2a00);
+        mat.emissiveIntensity = 0.25;
+      } else {
+        // Normal base color with green hint if operational
+        mat.color.copy(baseColor);
+        mat.emissive.set(0x000000);
+        mat.emissiveIntensity = 0;
+      }
+    });
+
+    // Update building body tint and emission based on risk
+    buildingBodyMeshesRef.current.forEach(({ mesh }, buildingId) => {
+      const risk = getBuildingRiskInfo(buildingId);
+      const mat = mesh.material as THREE.MeshStandardMaterial;
+
+      if (risk.status === 'NO_DISPONIBLE') {
+        mat.emissive.set(0x801020);
+        mat.emissiveIntensity = 0.35;
+      } else if (risk.status === 'LIMITADO') {
+        mat.emissive.set(0x602008);
+        mat.emissiveIntensity = 0.25;
+      } else if (risk.status === 'EN_OBSERVACION') {
+        mat.emissive.set(0x4a2a00);
+        mat.emissiveIntensity = 0.18;
+      } else {
+        mat.emissive.set(0x000000);
+        mat.emissiveIntensity = 0;
+      }
+    });
+
+    // Update label badges color
+    labelBadgesRef.current.forEach((badgeEl, buildingId) => {
+      const risk = getBuildingRiskInfo(buildingId);
+      badgeEl.style.backgroundColor = risk.color;
+      if (risk.isCritical) {
+        badgeEl.style.boxShadow = '0 0 10px rgba(182, 44, 73, 0.8)';
+      } else {
+        badgeEl.style.boxShadow = 'none';
+      }
+    });
+
+    // Update localized flood pools visibility and size
+    if (floodPuddlesGroupRef.current) {
+      floodPuddlesGroupRef.current.visible = layers.floodWater;
+      floodPuddlesGroupRef.current.children.forEach((child) => {
+        const zoneData = child.userData as { minRain: number };
+        if (zoneData) {
+          const isFlooded = rainIntensity >= zoneData.minRain && layers.floodWater;
+          child.visible = isFlooded;
+          if (isFlooded) {
+            // Expansion scale based on rain
+            const factor = 0.8 + ((rainIntensity - zoneData.minRain) / 50) * 0.4;
+            child.scale.set(Math.min(1.4, factor), 1, Math.min(1.4, factor));
+          }
+        }
+      });
+    }
+
     if (skyUpdateFnRef.current) {
       skyUpdateFnRef.current(hourOfDay, rainIntensity);
     }
-  }, [rainIntensity, layers.floodWater, hourOfDay]);
+  }, [activeScenario, dependencyGraph, rainIntensity, layers.floodWater, hourOfDay]);
 
   // Main Three.js Lifecycle
   useEffect(() => {
@@ -138,10 +335,10 @@ export function CampusMap3D() {
     sceneRef.current = scene;
 
     const width = container.clientWidth || window.innerWidth;
-    const height = container.clientHeight || 650;
+    const height = container.clientHeight || 700;
 
     const camera = new THREE.PerspectiveCamera(45, width / height, 1, 3500);
-    camera.position.set(360, 420, -140);
+    camera.position.set(-80, 520, 234);
     cameraRef.current = camera;
 
     const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
@@ -169,7 +366,7 @@ export function CampusMap3D() {
     controls.maxPolarAngle = Math.PI / 2.05;
     controls.minDistance = 30;
     controls.maxDistance = 1450;
-    controls.target.set(360, 0, 240);
+    controls.target.set(380, 0, 234);
     controls.update();
     controlsRef.current = controls;
 
@@ -181,16 +378,19 @@ export function CampusMap3D() {
       paths: new THREE.Group(),
       trees: new THREE.Group(),
       labels: new THREE.Group(),
+      floodZones: new THREE.Group(),
+      nodes: new THREE.Group(),
     };
     Object.values(layerGroups).forEach((grp) => scene.add(grp));
     layerGroupsRef.current = layerGroups;
+    floodPuddlesGroupRef.current = layerGroups.floodZones;
 
     // 4. Lighting & Environment
     const ambientLight = new THREE.AmbientLight(0xffffff, 0.65);
     scene.add(ambientLight);
 
     const sunLight = new THREE.DirectionalLight(0xfff8e7, 1.4);
-    sunLight.position.set(480, 450, 160);
+    sunLight.position.set(200, 480, 380);
     sunLight.castShadow = true;
     sunLight.shadow.mapSize.width = 2048;
     sunLight.shadow.mapSize.height = 2048;
@@ -213,7 +413,6 @@ export function CampusMap3D() {
       let sunInt: number;
       let sunHeight: number;
 
-      // Storm/Overcast weather if rain is significant
       if (rain >= 60) {
         skyColor = new THREE.Color(0x334155);
         fogColor = new THREE.Color(0x1e293b);
@@ -253,34 +452,32 @@ export function CampusMap3D() {
       ambientLight.intensity = ambInt;
       sunLight.intensity = sunInt;
 
-      const sunX = 360 + Math.cos((hour / 24) * Math.PI * 2) * 550;
+      const sunX = 380 + Math.cos((hour / 24) * Math.PI * 2) * 550;
       const sunY = Math.max(30, sunHeight * 480);
-      const sunZ = 240 + Math.sin((hour / 24) * Math.PI * 2) * 380;
+      const sunZ = 234 + Math.sin((hour / 24) * Math.PI * 2) * 380;
       sunLight.position.set(sunX, sunY, sunZ);
     }
     skyUpdateFnRef.current = updateSkyAndLighting;
     updateSkyAndLighting(hourOfDay, rainIntensity);
 
-    // 5. Build Campus Elements
-    // Ground plane
+    // 5. Suelo Base del Campus (Terreno Seco)
     const groundGeo = new THREE.PlaneGeometry(950, 750);
     const groundMat = new THREE.MeshStandardMaterial({ color: 0xdfd7c2, roughness: 0.9 });
     const ground = new THREE.Mesh(groundGeo, groundMat);
     ground.rotation.x = -Math.PI / 2;
-    ground.position.set(360, -0.15, 230);
+    ground.position.set(380, -0.15, 234);
     ground.receiveShadow = true;
     scene.add(ground);
 
-    // Exterior city plane
     const cityGeo = new THREE.PlaneGeometry(1800, 1600);
     const cityMat = new THREE.MeshStandardMaterial({ color: 0xbdb59f, roughness: 0.95 });
     const city = new THREE.Mesh(cityGeo, cityMat);
     city.rotation.x = -Math.PI / 2;
-    city.position.set(360, -0.3, 230);
+    city.position.set(380, -0.3, 234);
     city.receiveShadow = true;
     scene.add(city);
 
-    // Perimeter boundary wall
+    // Muro perimetral
     for (let i = 0; i < campusBoundary.length - 1; i++) {
       const p1 = campusBoundary[i];
       const p2 = campusBoundary[i + 1];
@@ -299,51 +496,112 @@ export function CampusMap3D() {
       scene.add(wall);
     }
 
-    // Dynamic flood water plane
-    const waterGeo = new THREE.PlaneGeometry(760, 500, 32, 32);
-    waterGeo.rotateX(-Math.PI / 2);
-    const waterMat = new THREE.MeshStandardMaterial({
+    // 6. CANALES Y ZONAS DELIMITADAS DE ANÉGAMIENTO (NO TAPAN TODO EL MAPA)
+    const puddleWaterMat = new THREE.MeshStandardMaterial({
       color: 0x1565c0,
-      roughness: 0.1,
-      metalness: 0.3,
+      roughness: 0.08,
+      metalness: 0.4,
       transparent: true,
-      opacity: 0.65,
+      opacity: 0.8,
     });
-    const waterMesh = new THREE.Mesh(waterGeo, waterMat);
-    waterMesh.position.set(360, 0.2, 230);
-    waterMesh.receiveShadow = true;
-    waterMesh.visible = rainIntensity >= 25;
-    scene.add(waterMesh);
-    waterMeshRef.current = waterMesh;
 
-    // Oval at Southwest
-    const ovalGeo = new THREE.CircleGeometry(26, 32);
-    ovalGeo.rotateX(-Math.PI / 2);
-    const ovalIsland = new THREE.Mesh(
-      ovalGeo,
-      new THREE.MeshStandardMaterial({ color: 0x43a047, roughness: 0.8 }),
-    );
-    ovalIsland.position.set(30, 0.1, 24);
-    ovalIsland.receiveShadow = true;
-    layerGroups.paths.add(ovalIsland);
+    FLOOD_RISK_ZONES.forEach((zone) => {
+      let mesh: THREE.Mesh;
+      if (zone.type === 'canal') {
+        const canalGeo = new THREE.PlaneGeometry(zone.width, zone.depth);
+        canalGeo.rotateX(-Math.PI / 2);
+        mesh = new THREE.Mesh(canalGeo, puddleWaterMat);
+      } else {
+        // Charco ovalado de empozamiento
+        const puddleGeo = new THREE.CircleGeometry(zone.width / 2, 24);
+        puddleGeo.rotateX(-Math.PI / 2);
+        puddleGeo.scale(1, 1, zone.depth / zone.width);
+        mesh = new THREE.Mesh(puddleGeo, puddleWaterMat);
+      }
 
-    // Oval Monument
-    const ovalPillar = new THREE.Mesh(
-      new THREE.CylinderGeometry(2, 2.8, 8, 16),
-      new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.3 }),
-    );
-    ovalPillar.position.set(30, 4.1, 24);
-    ovalPillar.castShadow = true;
-    layerGroups.paths.add(ovalPillar);
+      mesh.position.set(zone.center[0], 0.14, zone.center[1]);
+      if (zone.angleDeg) {
+        mesh.rotation.y = -(zone.angleDeg * Math.PI) / 180;
+      }
+      mesh.receiveShadow = true;
+      mesh.userData = { minRain: zone.minRain, zoneId: zone.id, name: zone.name };
+      mesh.visible = rainIntensity >= zone.minRain;
 
-    // 6. Buildings
+      layerGroups.floodZones.add(mesh);
+
+      // Warning marker over severe flood puddle
+      const alertDiv = document.createElement('div');
+      alertDiv.className = 'flood-alert-badge';
+      alertDiv.innerHTML = `
+        <div style="
+          display: flex;
+          align-items: center;
+          gap: 4px;
+          background: rgba(182, 44, 73, 0.92);
+          border: 1px solid rgba(255, 255, 255, 0.4);
+          border-radius: 4px;
+          padding: 2px 6px;
+          color: white;
+          font-family: inherit;
+          font-size: 9px;
+          font-weight: 700;
+          box-shadow: 0 2px 8px rgba(0,0,0,0.5);
+        ">
+          <span>⚠️</span>
+          <span>${zone.code}: ANEGADO</span>
+        </div>
+      `;
+      const alertObj = new CSS2DObject(alertDiv);
+      alertObj.position.set(zone.center[0], 2.2, zone.center[1]);
+      layerGroups.floodZones.add(alertObj);
+    });
+
+    // 7. PUNTOS DE ACCESO Y ENCUENTRO 3D (NODOS CLAVE DEL PLANO)
+    CAMPUS_NODES_3D.forEach((node) => {
+      const isAccess = node.type === 'access';
+      const nodeGeo = new THREE.CylinderGeometry(isAccess ? 1.4 : 2.2, isAccess ? 1.8 : 2.6, 2.5, 16);
+      const nodeMat = new THREE.MeshStandardMaterial({
+        color: isAccess ? 0xd97706 : 0x126a64,
+        roughness: 0.4,
+        metalness: 0.3,
+      });
+      const nodeMesh = new THREE.Mesh(nodeGeo, nodeMat);
+      nodeMesh.position.set(node.x, 1.25, node.z);
+      nodeMesh.castShadow = true;
+      nodeMesh.receiveShadow = true;
+      layerGroups.nodes.add(nodeMesh);
+
+      // HTML Badge for Node
+      const nodeLabel = document.createElement('div');
+      nodeLabel.style.cssText = `
+        background: ${isAccess ? 'rgba(217, 119, 6, 0.95)' : 'rgba(18, 106, 100, 0.95)'};
+        color: white;
+        border: 1px solid rgba(255,255,255,0.4);
+        border-radius: 6px;
+        padding: 2px 6px;
+        font-family: inherit;
+        font-size: 10px;
+        font-weight: 800;
+        white-space: nowrap;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.4);
+      `;
+      nodeLabel.innerHTML = `<span>${node.code}</span>`;
+      const nodeLabelObj = new CSS2DObject(nodeLabel);
+      nodeLabelObj.position.set(node.x, node.y + 2.5, node.z);
+      layerGroups.nodes.add(nodeLabelObj);
+    });
+
+    // 8. EDIFICIOS 3D CON IDENTIFICADORES Y COLORES DE ESTADO OPERATIVO
     const buildingMeshes: THREE.Mesh[] = [];
 
     buildings.forEach((b) => {
+      const code = getBuildingCode(b);
       let mesh: THREE.Mesh;
+      let roofMesh: THREE.Mesh | null = null;
+      const baseColor = new THREE.Color(b.roofColor || b.color);
 
       if (b.isOctagon && b.center && b.outerRadius && b.innerRadius) {
-        // Octagonal building (Biología)
+        // Octogonal: Facultad de Biología
         const cx = b.center[0], cz = b.center[1];
         const octShape = new THREE.Shape();
         for (let i = 0; i < 8; i++) {
@@ -381,17 +639,8 @@ export function CampusMap3D() {
           metalness: 0.1,
         });
         mesh = new THREE.Mesh(geo, mat);
-
-        const gardenGeo = new THREE.CircleGeometry(b.innerRadius - 0.5, 8);
-        gardenGeo.rotateX(-Math.PI / 2);
-        const courtyardGarden = new THREE.Mesh(
-          gardenGeo,
-          new THREE.MeshStandardMaterial({ color: 0x4caf50, roughness: 0.9 }),
-        );
-        courtyardGarden.position.set(cx, 0.05, cz);
-        layerGroups.greenAreas.add(courtyardGarden);
+        roofMesh = mesh; // Octagon itself serves as roof target
       } else if (b.polygon && b.polygon.length > 0) {
-        // Polygonal building
         const shape = new THREE.Shape();
         b.polygon.forEach((p, i) => {
           if (i === 0) shape.moveTo(p[0], -p[1]);
@@ -415,8 +664,8 @@ export function CampusMap3D() {
         });
         mesh = new THREE.Mesh(geo, mat);
 
-        // Pyramid roof (Auditorio Central)
         if (b.hasPyramidRoof && b.polygon.length >= 4) {
+          // Techo piramidal Auditorio Central
           const poly = b.polygon;
           const cx = poly.reduce((sum, p) => sum + p[0], 0) / poly.length;
           const cz = poly.reduce((sum, p) => sum + p[1], 0) / poly.length;
@@ -440,19 +689,12 @@ export function CampusMap3D() {
             metalness: 0.45,
             side: THREE.DoubleSide,
           });
-          const pyrMesh = new THREE.Mesh(pyrGeo, pyrMat);
-          pyrMesh.castShadow = true;
-          pyrMesh.receiveShadow = true;
-          layerGroups.buildings.add(pyrMesh);
-
-          const pinGeo = new THREE.CylinderGeometry(0.3, 0.6, 2.5, 8);
-          const pinMat = new THREE.MeshStandardMaterial({ color: 0xffd700, metalness: 0.9, roughness: 0.1 });
-          const pin = new THREE.Mesh(pinGeo, pinMat);
-          pin.position.set(cx, apexH + 1.25, cz);
-          pin.castShadow = true;
-          layerGroups.buildings.add(pin);
+          roofMesh = new THREE.Mesh(pyrGeo, pyrMat);
+          roofMesh.castShadow = true;
+          roofMesh.receiveShadow = true;
+          layerGroups.buildings.add(roofMesh);
         } else {
-          // Flat roof slab
+          // Losa plana de techo para tintar con el color de riesgo
           const roofShape = new THREE.Shape();
           b.polygon.forEach((p, i) => {
             if (i === 0) roofShape.moveTo(p[0], -p[1]);
@@ -463,25 +705,13 @@ export function CampusMap3D() {
           const roofGeo = new THREE.ShapeGeometry(roofShape);
           roofGeo.rotateX(-Math.PI / 2);
           const roofMat = new THREE.MeshStandardMaterial({
-            color: new THREE.Color(b.roofColor || b.color).multiplyScalar(0.85),
-            roughness: 0.8,
+            color: baseColor.clone(),
+            roughness: 0.75,
           });
-          const roofMesh = new THREE.Mesh(roofGeo, roofMat);
+          roofMesh = new THREE.Mesh(roofGeo, roofMat);
           roofMesh.position.set(0, b.height + 0.38, 0);
           roofMesh.receiveShadow = true;
           layerGroups.buildings.add(roofMesh);
-
-          // AC units on tall buildings
-          if (b.height >= 11) {
-            const cx = b.polygon.reduce((sum, p) => sum + p[0], 0) / b.polygon.length;
-            const cz = b.polygon.reduce((sum, p) => sum + p[1], 0) / b.polygon.length;
-            const acGeo = new THREE.BoxGeometry(6, 2.4, 5);
-            const acMat = new THREE.MeshStandardMaterial({ color: 0x546e7a, roughness: 0.5 });
-            const acMesh = new THREE.Mesh(acGeo, acMat);
-            acMesh.position.set(cx, b.height + 1.6, cz);
-            acMesh.castShadow = true;
-            layerGroups.buildings.add(acMesh);
-          }
         }
       } else {
         return;
@@ -490,15 +720,81 @@ export function CampusMap3D() {
       mesh.position.set(0, 0, 0);
       mesh.castShadow = true;
       mesh.receiveShadow = true;
-      mesh.userData = { ...b, layerType: 'building' };
+      mesh.userData = { ...b, code, layerType: 'building' };
 
       layerGroups.buildings.add(mesh);
       buildingMeshes.push(mesh);
+      buildingBodyMeshesRef.current.set(b.id, { mesh, baseColor: new THREE.Color(b.color) });
+
+      if (roofMesh) {
+        roofMeshesRef.current.set(b.id, { mesh: roofMesh, baseColor });
+      }
+
+      // 9. Floating CSS2D Labels with Prominent ID Badge
+      const isImportant =
+        FACILITY_3D_MAPPING[b.id] ||
+        b.id === 'auditorio-central' ||
+        b.id === 'ciencias-biologicas' ||
+        b.id === 'comedor-universitario' ||
+        b.id === 'estadio-unt';
+
+      const labelData = labels.find((l) => l.id === b.id);
+      if (labelData) {
+        const el = document.createElement('div');
+        el.className = 'campus-label-3d';
+        el.style.cssText = `
+          display: flex;
+          align-items: center;
+          gap: 5px;
+          background: rgba(16, 28, 39, 0.92);
+          backdrop-filter: blur(8px);
+          border: 1px solid rgba(255, 255, 255, 0.2);
+          border-radius: 6px;
+          padding: 3px 7px;
+          color: #ffffff;
+          font-family: inherit;
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.45);
+          pointer-events: auto;
+          cursor: pointer;
+          white-space: nowrap;
+          transition: transform 0.2s;
+        `;
+
+        const badgeSpan = document.createElement('span');
+        badgeSpan.style.cssText = `
+          font-size: 10px;
+          font-weight: 800;
+          padding: 2px 5px;
+          border-radius: 4px;
+          background: #178353;
+          color: white;
+          letter-spacing: 0.5px;
+          border: 1px solid rgba(255,255,255,0.3);
+        `;
+        badgeSpan.textContent = code;
+        labelBadgesRef.current.set(b.id, badgeSpan);
+
+        el.appendChild(badgeSpan);
+        const textDiv = document.createElement('div');
+        textDiv.innerHTML = `
+          <div style="font-size: 10px; font-weight: 600; line-height: 1.1;">${b.name}</div>
+          <div style="font-size: 8px; opacity: 0.7; color: #75d5c4; text-transform: uppercase;">${b.category || b.type}</div>
+        `;
+        el.appendChild(textDiv);
+
+        el.addEventListener('click', () => {
+          setSelectedBuilding(b);
+        });
+
+        const labelObj = new CSS2DObject(el);
+        labelObj.position.set(labelData.x, labelData.y, labelData.z);
+        layerGroups.labels.add(labelObj);
+      }
     });
 
     buildingMeshesRef.current = buildingMeshes;
 
-    // 7. Sports Complex
+    // 10. Complejo Deportivo, Rotonda, Vías y Áreas Verdes
     const { stadium, pitch, grandstandNW, grandstandSE, courts, pool } = sportsComplex;
     const angleRad = (stadium.angleDeg * Math.PI) / 180;
     const cosA = Math.cos(angleRad);
@@ -535,7 +831,6 @@ export function CampusMap3D() {
     trackMesh.receiveShadow = true;
     layerGroups.sports.add(trackMesh);
 
-    // Football Pitch
     const pitchGeo = new THREE.PlaneGeometry(pitch.width, pitch.depth);
     pitchGeo.rotateX(-Math.PI / 2);
     const pitchMesh = new THREE.Mesh(pitchGeo, new THREE.MeshStandardMaterial({ color: 0x2e7d32, roughness: 0.85 }));
@@ -544,7 +839,7 @@ export function CampusMap3D() {
     pitchMesh.receiveShadow = true;
     layerGroups.sports.add(pitchMesh);
 
-    // Grandstands
+    // Tribunas
     [grandstandNW, grandstandSE].forEach((g) => {
       const shape = new THREE.Shape();
       g.polygon.forEach((p, i) => {
@@ -563,7 +858,7 @@ export function CampusMap3D() {
       const standMesh = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color: g.color, roughness: 0.7 }));
       standMesh.castShadow = true;
       standMesh.receiveShadow = true;
-      standMesh.userData = { id: g.id, name: g.name, category: 'Deportes', type: 'sports', height: g.height };
+      standMesh.userData = { id: g.id, code: g.id.toUpperCase(), name: g.name, category: 'Deportes', type: 'sports', height: g.height };
       layerGroups.sports.add(standMesh);
       buildingMeshes.push(standMesh);
     });
@@ -584,7 +879,7 @@ export function CampusMap3D() {
       layerGroups.sports.add(courtMesh);
     });
 
-    // Pool
+    // Piscina
     const poolShape = new THREE.Shape();
     pool.polygon.forEach((p, i) => {
       if (i === 0) poolShape.moveTo(p[0], -p[1]);
@@ -600,14 +895,11 @@ export function CampusMap3D() {
     poolMesh.position.set(0, 0.12, 0);
     layerGroups.sports.add(poolMesh);
 
-    // 8. Rotonda Plaza
+    // Rotonda
     const { center: rCenter, outerRadius, innerRadius, hubRadius, spokes } = rotonda;
     const rCircleGeo = new THREE.CircleGeometry(outerRadius, 48);
     rCircleGeo.rotateX(-Math.PI / 2);
-    const rPlazaMesh = new THREE.Mesh(
-      rCircleGeo,
-      new THREE.MeshStandardMaterial({ color: 0xded8c6, roughness: 0.7 }),
-    );
+    const rPlazaMesh = new THREE.Mesh(rCircleGeo, new THREE.MeshStandardMaterial({ color: 0xded8c6, roughness: 0.7 }));
     rPlazaMesh.position.set(rCenter[0], 0.1, rCenter[1]);
     rPlazaMesh.receiveShadow = true;
     layerGroups.paths.add(rPlazaMesh);
@@ -645,7 +937,7 @@ export function CampusMap3D() {
     spire.castShadow = true;
     layerGroups.paths.add(spire);
 
-    // 9. Parking Lots
+    // Parking Lots
     parkingLots.forEach((lot) => {
       const shape = new THREE.Shape();
       lot.polygon.forEach((p, i) => {
@@ -661,7 +953,7 @@ export function CampusMap3D() {
       layerGroups.paths.add(mesh);
     });
 
-    // 10. Green Areas
+    // Green Areas
     const colorMap: Record<string, number> = { park: 0x43a047, garden: 0x4caf50, lawn: 0x66bb6a };
     greenAreas.forEach((area) => {
       const shape = new THREE.Shape();
@@ -681,7 +973,7 @@ export function CampusMap3D() {
       layerGroups.greenAreas.add(mesh);
     });
 
-    // 11. Paths
+    // Paths
     paths.forEach((p) => {
       for (let i = 0; i < p.points.length - 1; i++) {
         const p1 = p.points[i];
@@ -701,7 +993,7 @@ export function CampusMap3D() {
       }
     });
 
-    // 12. Procedural Trees
+    // Trees
     const treeConfig: Record<string, { trunkH: number; trunkR: number; crownR: number; crownH: number }> = {
       small: { trunkH: 1.8, trunkR: 0.22, crownR: 2.2, crownH: 3.2 },
       medium: { trunkH: 2.6, trunkR: 0.32, crownR: 3.4, crownH: 4.5 },
@@ -732,54 +1024,7 @@ export function CampusMap3D() {
       layerGroups.trees.add(crown);
     });
 
-    // 13. CSS2D Floating Labels
-    labels.forEach((lbl) => {
-      const el = document.createElement('div');
-      el.className = 'campus-label-3d';
-      el.style.cssText = `
-        display: flex;
-        align-items: center;
-        gap: 5px;
-        background: rgba(16, 28, 39, 0.9);
-        backdrop-filter: blur(8px);
-        border: 1px solid rgba(117, 213, 196, 0.4);
-        border-radius: 6px;
-        padding: 3px 8px;
-        color: #ffffff;
-        font-family: inherit;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
-        pointer-events: auto;
-        cursor: pointer;
-        transition: transform 0.2s, background 0.2s;
-        white-space: nowrap;
-      `;
-
-      let icon = '🏛️';
-      if (lbl.type === 'academic') icon = '🎓';
-      else if (lbl.type === 'lab') icon = '🔬';
-      else if (lbl.type === 'admin') icon = '🏢';
-      else if (lbl.type === 'library') icon = '📚';
-      else if (lbl.type === 'sports') icon = '⚽';
-
-      el.innerHTML = `
-        <span style="font-size: 11px;">${icon}</span>
-        <div>
-          <div style="font-size: 10px; font-weight: 600; line-height: 1.1;">${lbl.name}</div>
-          <div style="font-size: 8px; opacity: 0.7; color: #75d5c4; text-transform: uppercase;">${lbl.category || lbl.type}</div>
-        </div>
-      `;
-
-      el.addEventListener('click', () => {
-        const found = buildings.find((b) => b.id === lbl.id);
-        if (found) setSelectedBuilding(found);
-      });
-
-      const labelObj = new CSS2DObject(el);
-      labelObj.position.set(lbl.x, lbl.y, lbl.z);
-      layerGroups.labels.add(labelObj);
-    });
-
-    // 14. Raycaster & Interactivity
+    // 11. Raycaster & Interactivity
     const raycaster = new THREE.Raycaster();
     const mouse = new THREE.Vector2();
     let currentHovered: THREE.Mesh | null = null;
@@ -840,7 +1085,7 @@ export function CampusMap3D() {
     container.addEventListener('pointermove', onPointerMove);
     container.addEventListener('click', onClick);
 
-    // 15. Compass rendering
+    // 12. Compass rendering
     const drawCompass = () => {
       const canvas = compassCanvasRef.current;
       if (!canvas) return;
@@ -853,7 +1098,7 @@ export function CampusMap3D() {
       const cx = 60, cy = 60, r = 24;
       const dir = new THREE.Vector3();
       camera.getWorldDirection(dir);
-      const angle = Math.atan2(dir.x, dir.z);
+      const angle = Math.atan2(dir.z, dir.x);
 
       ctx.clearRect(0, 0, 120, 120);
 
@@ -869,7 +1114,6 @@ export function CampusMap3D() {
       ctx.translate(cx, cy);
       ctx.rotate(-angle);
 
-      // North needle
       ctx.beginPath();
       ctx.moveTo(0, -r + 2);
       ctx.lineTo(-5, 4);
@@ -878,7 +1122,6 @@ export function CampusMap3D() {
       ctx.fillStyle = '#ef4444';
       ctx.fill();
 
-      // South needle
       ctx.beginPath();
       ctx.moveTo(0, r - 2);
       ctx.lineTo(-4, -3);
@@ -895,7 +1138,7 @@ export function CampusMap3D() {
       ctx.restore();
     };
 
-    // 16. Animation Loop
+    // 13. Animation Loop
     let animId: number;
     let clock = new THREE.Clock();
 
@@ -903,10 +1146,14 @@ export function CampusMap3D() {
       animId = requestAnimationFrame(animate);
       controls.update();
 
-      // Subtle water wave animation
-      if (waterMeshRef.current && waterMeshRef.current.visible) {
+      // Subtle water ripple animation on localized pools
+      if (floodPuddlesGroupRef.current && floodPuddlesGroupRef.current.visible) {
         const time = clock.getElapsedTime();
-        waterMeshRef.current.position.y += Math.sin(time * 2) * 0.0012;
+        floodPuddlesGroupRef.current.children.forEach((mesh, idx) => {
+          if (mesh instanceof THREE.Mesh) {
+            mesh.position.y = 0.14 + Math.sin(time * 2.5 + idx) * 0.003;
+          }
+        });
       }
 
       drawCompass();
@@ -916,11 +1163,11 @@ export function CampusMap3D() {
 
     animate();
 
-    // 17. Resize Observer
+    // 14. Resize Observer
     const resizeObserver = new ResizeObserver(() => {
       if (!container) return;
       const newW = container.clientWidth;
-      const newH = container.clientHeight || 650;
+      const newH = container.clientHeight || 700;
       camera.aspect = newW / newH;
       camera.updateProjectionMatrix();
       renderer.setSize(newW, newH);
@@ -946,235 +1193,415 @@ export function CampusMap3D() {
     };
   }, []);
 
-  // Determine linked NEXO UNT facility for selected 3D building
   const mappedFacilityId = selectedBuilding ? FACILITY_3D_MAPPING[selectedBuilding.id] : null;
   const linkedFacility = mappedFacilityId
     ? FACILITIES.find((f) => f.id === mappedFacilityId)
     : null;
 
-  // Activities related to the selected building
   const linkedActivities = useMemo(() => {
     if (!linkedFacility) return [];
     return CONTINUITY_ACTIVITIES.filter((a) => a.facilityId === linkedFacility.id);
   }, [linkedFacility]);
 
+  const selectedBuildingRisk = selectedBuilding
+    ? getBuildingRiskInfo(selectedBuilding.id)
+    : null;
+
   return (
-    <div className="relative w-full h-[720px] rounded-2xl overflow-hidden border border-subtle bg-sidebar shadow-lg">
+    <div
+      ref={wrapperRef}
+      className={`relative w-full overflow-hidden bg-sidebar shadow-2xl transition-all duration-200 ${
+        isFullscreen
+          ? 'fixed inset-0 z-50 w-screen h-screen rounded-none'
+          : 'h-[740px] rounded-2xl border border-subtle'
+      }`}
+    >
       {/* Three.js Canvas Container */}
       <div ref={containerRef} className="w-full h-full" />
 
-      {/* Top Floating Control Bar (GovTech Style) */}
-      <div className="absolute top-4 left-4 z-10 flex flex-wrap items-center gap-2">
-        <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-sidebar/90 border border-white/10 text-white backdrop-blur-md shadow-md">
-          <div className="w-2.5 h-2.5 rounded-full bg-accent-primary animate-pulse" />
-          <span className="text-xs font-semibold tracking-wide">MODO 3D • CIUDAD UNIVERSITARIA UNT</span>
-        </div>
+      {/* Floating Action Controls - Semi-transparent (Top Right) */}
+      <div className="absolute top-4 right-4 z-40 flex items-center gap-2">
+        {/* Toggle UI Menus Button */}
+        <button
+          type="button"
+          onClick={() => setHideAllMenus(!hideAllMenus)}
+          className={`px-3 py-1.5 rounded-xl border backdrop-blur-md text-xs font-bold flex items-center gap-1.5 shadow-xl transition-all cursor-pointer ${
+            hideAllMenus
+              ? 'bg-[#126A64]/85 hover:bg-[#126A64] border-[#4AD196] text-white ring-2 ring-[#4AD196]/50 animate-pulse'
+              : 'bg-black/45 hover:bg-black/70 border-white/25 hover:border-white/50 text-white/95 hover:text-white'
+          }`}
+          title={hideAllMenus ? 'Mostrar menús de control' : 'Ocultar menús (Vista limpia 3D)'}
+          aria-label={hideAllMenus ? 'Mostrar menús de control' : 'Ocultar menús (Vista limpia 3D)'}
+        >
+          {hideAllMenus ? (
+            <>
+              <Eye className="w-3.5 h-3.5 text-white" />
+              <span>Mostrar menús</span>
+            </>
+          ) : (
+            <>
+              <EyeOff className="w-3.5 h-3.5 text-white/80" />
+              <span>Ocultar menús</span>
+            </>
+          )}
+        </button>
 
-        {/* Scenario Pill */}
-        <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-surface/90 border border-subtle text-xs font-medium text-primary backdrop-blur-md shadow-md">
-          <span className="text-muted">Escenario:</span>
-          <select
-            value={activeScenario.id}
-            onChange={(e) => selectScenario(e.target.value)}
-            className="bg-transparent font-semibold text-primary outline-none cursor-pointer"
-          >
-            {scenarios.map((s) => (
-              <option key={s.id} value={s.id} className="text-primary bg-surface">
-                {s.title} ({s.inputs.rainIntensity}% lluvia)
-              </option>
-            ))}
-          </select>
-        </div>
+        {/* Fullscreen Button */}
+        <button
+          type="button"
+          onClick={toggleFullscreen}
+          className="px-3 py-1.5 rounded-xl bg-black/45 hover:bg-black/70 backdrop-blur-md border border-white/25 hover:border-white/50 text-white/95 hover:text-white text-xs font-bold flex items-center gap-1.5 shadow-xl transition-all cursor-pointer"
+          title={isFullscreen ? 'Salir de pantalla completa (Esc)' : 'Ver en pantalla completa'}
+          aria-label={isFullscreen ? 'Salir de pantalla completa' : 'Ver en pantalla completa'}
+        >
+          {isFullscreen ? (
+            <>
+              <Minimize2 className="w-3.5 h-3.5 text-amber-300" />
+              <span className="text-amber-300">Salir</span>
+            </>
+          ) : (
+            <>
+              <Maximize2 className="w-3.5 h-3.5 text-white/90" />
+              <span>Pantalla completa</span>
+            </>
+          )}
+        </button>
       </div>
 
-      {/* Top-Right Control Palette */}
-      <div className="absolute top-4 right-4 z-10 flex flex-col gap-2 max-w-[240px]">
-        {/* Layer Toggles Card */}
-        <div className="p-3 rounded-xl bg-sidebar/90 border border-white/10 text-white backdrop-blur-md shadow-xl text-xs space-y-2">
-          <div className="flex items-center justify-between font-semibold text-[11px] uppercase tracking-wider text-accent-primary border-b border-white/10 pb-1.5">
-            <span>Capas 3D</span>
-            <Building2 className="w-3.5 h-3.5" />
-          </div>
-
-          <div className="grid grid-cols-2 gap-1.5">
-            <button
-              onClick={() => toggleLayer('buildings')}
-              className={`px-2 py-1 rounded text-[11px] font-medium border transition-colors flex items-center justify-between ${
-                layers.buildings
-                  ? 'bg-accent-primary/25 border-accent-primary text-white'
-                  : 'bg-white/5 border-white/10 text-white/50'
-              }`}
-            >
-              <span>Edificios</span>
-              {layers.buildings ? <Eye className="w-3 h-3" /> : <EyeOff className="w-3 h-3" />}
-            </button>
-
-            <button
-              onClick={() => toggleLayer('floodWater')}
-              className={`px-2 py-1 rounded text-[11px] font-medium border transition-colors flex items-center justify-between ${
-                layers.floodWater
-                  ? 'bg-blue-600/30 border-blue-400 text-blue-200'
-                  : 'bg-white/5 border-white/10 text-white/50'
-              }`}
-            >
-              <span>Inundación</span>
-              <Droplets className="w-3 h-3" />
-            </button>
-
-            <button
-              onClick={() => toggleLayer('greenAreas')}
-              className={`px-2 py-1 rounded text-[11px] font-medium border transition-colors flex items-center justify-between ${
-                layers.greenAreas
-                  ? 'bg-green-600/30 border-green-400 text-green-200'
-                  : 'bg-white/5 border-white/10 text-white/50'
-              }`}
-            >
-              <span>Áreas verdes</span>
-              {layers.greenAreas ? <Eye className="w-3 h-3" /> : <EyeOff className="w-3 h-3" />}
-            </button>
-
-            <button
-              onClick={() => toggleLayer('trees')}
-              className={`px-2 py-1 rounded text-[11px] font-medium border transition-colors flex items-center justify-between ${
-                layers.trees
-                  ? 'bg-green-700/30 border-green-500 text-green-300'
-                  : 'bg-white/5 border-white/10 text-white/50'
-              }`}
-            >
-              <span>Árboles</span>
-              {layers.trees ? <Eye className="w-3 h-3" /> : <EyeOff className="w-3 h-3" />}
-            </button>
-
-            <button
-              onClick={() => toggleLayer('paths')}
-              className={`px-2 py-1 rounded text-[11px] font-medium border transition-colors flex items-center justify-between ${
-                layers.paths
-                  ? 'bg-amber-600/30 border-amber-400 text-amber-200'
-                  : 'bg-white/5 border-white/10 text-white/50'
-              }`}
-            >
-              <span>Vías y rutas</span>
-              {layers.paths ? <Eye className="w-3 h-3" /> : <EyeOff className="w-3 h-3" />}
-            </button>
-
-            <button
-              onClick={() => toggleLayer('labels')}
-              className={`px-2 py-1 rounded text-[11px] font-medium border transition-colors flex items-center justify-between ${
-                layers.labels
-                  ? 'bg-purple-600/30 border-purple-400 text-purple-200'
-                  : 'bg-white/5 border-white/10 text-white/50'
-              }`}
-            >
-              <span>Etiquetas</span>
-              {layers.labels ? <Eye className="w-3 h-3" /> : <EyeOff className="w-3 h-3" />}
-            </button>
-          </div>
-
-          {/* Time of Day Slider */}
-          <div className="pt-2 border-t border-white/10 space-y-1">
-            <div className="flex items-center justify-between text-[11px] text-white/70">
-              <span className="flex items-center gap-1">
-                <Sun className="w-3 h-3 text-amber-400" /> Iluminación solar
-              </span>
-              <span className="font-mono text-accent-primary">{Math.floor(hourOfDay)}:00h</span>
+      {/* Top Floating Control Bar - LEFT SIDE (Hidden when hideAllMenus is true) */}
+      {!hideAllMenus && (
+        <div className="absolute top-4 left-4 z-20 flex flex-col gap-2.5 w-[350px] max-w-[calc(100vw-32px)] animate-in fade-in duration-150">
+          {/* Title & Scenario Selector Card */}
+        <div ref={scenarioMenuRef} className="relative rounded-xl bg-[#0A121A] border-2 border-[#1E344A] text-white shadow-[0_12px_36px_rgba(0,0,0,0.7)] p-2.5 space-y-2">
+          {/* Header row: Badge + Toggle Controls */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-[#126A64]/30 border border-[#126A64] text-[#4AD196] font-extrabold text-[11px] tracking-wider">
+              <div className="w-2 h-2 rounded-full bg-[#10B981] animate-pulse" />
+              <span>3D UNT • DIGITAL TWIN</span>
             </div>
-            <input
-              type="range"
-              min="5"
-              max="21"
-              step="0.5"
-              value={hourOfDay}
-              onChange={(e) => setHourOfDay(parseFloat(e.target.value))}
-              className="w-full h-1 bg-white/20 rounded-lg appearance-none cursor-pointer accent-accent-primary"
-            />
+            <button
+              type="button"
+              onClick={() => setShowControls(!showControls)}
+              className="px-2 py-1 rounded-md bg-[#142332] hover:bg-[#1E354C] border border-[#2B435C] text-xs font-semibold text-white/90 flex items-center gap-1.5 transition-colors cursor-pointer"
+              title="Mostrar u ocultar panel de capas"
+            >
+              <SlidersHorizontal className="w-3.5 h-3.5 text-accent-primary" />
+              <span>{showControls ? 'Ocultar' : 'Capas'}</span>
+            </button>
           </div>
 
-          {/* Quick Camera Views */}
-          <div className="pt-2 border-t border-white/10 flex gap-1.5">
+          {/* Custom Scenario Dropdown Trigger (Replaces buggy native select) */}
+          <div className="relative">
             <button
-              onClick={resetCamera}
-              className="flex-1 py-1 px-2 rounded bg-white/10 hover:bg-white/20 text-[10px] font-medium text-white flex items-center justify-center gap-1 transition-colors"
+              type="button"
+              onClick={() => setScenarioDropdownOpen(!scenarioDropdownOpen)}
+              className="w-full px-3 py-2 rounded-lg bg-[#111F2D] hover:bg-[#172A3D] border border-[#2B435C] hover:border-[#126A64] text-white flex items-center justify-between gap-2 transition-all cursor-pointer shadow-inner text-left focus:outline-none focus:ring-2 focus:ring-[#126A64]"
+              aria-expanded={scenarioDropdownOpen}
+              aria-label="Seleccionar escenario de simulación"
             >
-              <RotateCcw className="w-3 h-3" /> Isométrica
+              <div className="flex items-center gap-2 min-w-0">
+                <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
+                <div className="min-w-0">
+                  <div className="text-[10px] uppercase font-bold text-white/50 tracking-wider">Escenario Activo</div>
+                  <div className="text-xs font-bold text-white truncate max-w-[190px]">{activeScenario.title}</div>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <span className="px-1.5 py-0.5 rounded bg-blue-950/80 border border-blue-500/50 text-blue-300 font-mono text-[10px] font-bold">
+                  {activeScenario.inputs.rainIntensity}% lluvia
+                </span>
+                <ChevronDown className={`w-4 h-4 text-white/70 transition-transform duration-200 ${scenarioDropdownOpen ? 'rotate-180 text-white' : ''}`} />
+              </div>
             </button>
-            <button
-              onClick={setTopDownView}
-              className="flex-1 py-1 px-2 rounded bg-white/10 hover:bg-white/20 text-[10px] font-medium text-white flex items-center justify-center gap-1 transition-colors"
-            >
-              <Maximize2 className="w-3 h-3" /> Cenital
-            </button>
+
+            {/* Custom Dropdown Popover */}
+            {scenarioDropdownOpen && (
+              <div className="absolute top-full left-0 right-0 mt-1.5 z-50 rounded-xl bg-[#090F15] border-2 border-[#1E3A52] text-white shadow-[0_16px_40px_rgba(0,0,0,0.85)] p-1.5 space-y-1 animate-in fade-in slide-in-from-top-1 duration-150 max-h-[320px] overflow-y-auto">
+                <div className="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-accent-primary border-b border-white/10 flex items-center justify-between">
+                  <span>Seleccionar Escenario de Riesgo</span>
+                  <span className="text-[9px] text-white/40">{scenarios.length} disponibles</span>
+                </div>
+                {scenarios.map((s) => {
+                  const isSelected = s.id === activeScenario.id;
+                  return (
+                    <button
+                      key={s.id}
+                      type="button"
+                      onClick={() => {
+                        selectScenario(s.id);
+                        setScenarioDropdownOpen(false);
+                      }}
+                      className={`w-full text-left p-2.5 rounded-lg flex items-center justify-between gap-2 transition-all cursor-pointer ${
+                        isSelected
+                          ? 'bg-[#126A64] text-white font-bold shadow-md'
+                          : 'bg-[#101C27] hover:bg-[#1A2E42] text-[#E2E8F0] border border-[#1E344A] hover:border-[#3B5B7D]'
+                      }`}
+                    >
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-xs font-bold leading-tight">{s.title}</span>
+                          {isSelected && <Check className="w-3.5 h-3.5 text-white shrink-0 ml-1" />}
+                        </div>
+                        <div className={`text-[10px] truncate mt-0.5 ${isSelected ? 'text-white/80' : 'text-white/60'}`}>
+                          {s.description}
+                        </div>
+                      </div>
+                      <span
+                        className={`px-1.5 py-0.5 rounded text-[10px] font-mono font-bold shrink-0 ${
+                          isSelected
+                            ? 'bg-black/30 text-white border border-white/20'
+                            : 'bg-blue-950/70 border border-blue-500/40 text-blue-300'
+                        }`}
+                      >
+                        {s.inputs.rainIntensity}% lluvia
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
           </div>
         </div>
 
-        {/* Flood Alert Indicator Pill */}
-        {rainIntensity >= 30 && layers.floodWater && (
-          <div className="p-2.5 rounded-xl bg-blue-950/90 border border-blue-500/40 text-blue-100 backdrop-blur-md shadow-lg flex items-start gap-2">
-            <Droplets className="w-4 h-4 text-blue-400 shrink-0 mt-0.5 animate-pulse" />
-            <div className="text-[11px] leading-tight">
-              <span className="font-semibold block text-blue-300">Anegamiento Pluvial 3D</span>
-              Lluvia {rainIntensity}%: cotas bajas inundadas (+{((rainIntensity - 25) / 75 * 1.8).toFixed(1)}m).
+        {/* Collapsible Layer Controls Card */}
+        {showControls && (
+          <div className="p-3 rounded-xl bg-[#0A121A] border-2 border-[#1E344A] text-white shadow-2xl text-xs space-y-3 animate-in fade-in slide-in-from-top-2 duration-150">
+            <div className="flex items-center justify-between font-extrabold text-[11px] uppercase tracking-wider text-accent-primary border-b border-[#1E344A] pb-1.5">
+              <span className="flex items-center gap-1.5">
+                <Layers className="w-3.5 h-3.5" /> Capas del Gemelo Digital
+              </span>
+              <span className="text-[10px] text-white/60 font-semibold">CAD UNT</span>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => toggleLayer('buildings')}
+                className={`px-2.5 py-2 rounded-lg text-xs font-bold border transition-all flex items-center justify-between cursor-pointer ${
+                  layers.buildings
+                    ? 'bg-[#126A64] border-[#2CD9B5] text-white shadow-md'
+                    : 'bg-[#101D2B] border-[#243A50] text-[#94A3B8] hover:bg-[#182C40] hover:text-white'
+                }`}
+              >
+                <span>Edificios</span>
+                {layers.buildings ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5 opacity-60" />}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => toggleLayer('floodWater')}
+                className={`px-2.5 py-2 rounded-lg text-xs font-bold border transition-all flex items-center justify-between cursor-pointer ${
+                  layers.floodWater
+                    ? 'bg-[#1D4ED8] border-[#60A5FA] text-white shadow-md'
+                    : 'bg-[#101D2B] border-[#243A50] text-[#94A3B8] hover:bg-[#182C40] hover:text-white'
+                }`}
+              >
+                <span>Canales & Pozas</span>
+                <Droplets className="w-3.5 h-3.5 text-blue-200" />
+              </button>
+
+              <button
+                type="button"
+                onClick={() => toggleLayer('greenAreas')}
+                className={`px-2.5 py-2 rounded-lg text-xs font-bold border transition-all flex items-center justify-between cursor-pointer ${
+                  layers.greenAreas
+                    ? 'bg-[#15803D] border-[#4ADE80] text-white shadow-md'
+                    : 'bg-[#101D2B] border-[#243A50] text-[#94A3B8] hover:bg-[#182C40] hover:text-white'
+                }`}
+              >
+                <span>Áreas verdes</span>
+                {layers.greenAreas ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5 opacity-60" />}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => toggleLayer('paths')}
+                className={`px-2.5 py-2 rounded-lg text-xs font-bold border transition-all flex items-center justify-between cursor-pointer ${
+                  layers.paths
+                    ? 'bg-[#C25B2B] border-[#F97316] text-white shadow-md'
+                    : 'bg-[#101D2B] border-[#243A50] text-[#94A3B8] hover:bg-[#182C40] hover:text-white'
+                }`}
+              >
+                <span>Vías internas</span>
+                {layers.paths ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5 opacity-60" />}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => toggleLayer('labels')}
+                className={`px-2.5 py-2 rounded-lg text-xs font-bold border transition-all flex items-center justify-between col-span-2 cursor-pointer ${
+                  layers.labels
+                    ? 'bg-[#6D28D9] border-[#C084FC] text-white shadow-md'
+                    : 'bg-[#101D2B] border-[#243A50] text-[#94A3B8] hover:bg-[#182C40] hover:text-white'
+                }`}
+              >
+                <span>IDs y Rótulos de Edificios</span>
+                {layers.labels ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5 opacity-60" />}
+              </button>
+            </div>
+
+            {/* Time Slider */}
+            <div className="pt-2.5 border-t border-[#1E344A] space-y-1.5">
+              <div className="flex items-center justify-between text-xs text-white">
+                <span className="flex items-center gap-1.5 font-semibold">
+                  <Sun className="w-3.5 h-3.5 text-amber-400" /> Iluminación solar
+                </span>
+                <span className="font-mono font-bold text-amber-300 text-xs px-2 py-0.5 rounded bg-[#17283B] border border-[#2A4460]">
+                  {Math.floor(hourOfDay)}:{Math.round((hourOfDay % 1) * 60).toString().padStart(2, '0')} hrs
+                </span>
+              </div>
+              <input
+                type="range"
+                min="5"
+                max="21"
+                step="0.5"
+                value={hourOfDay}
+                onChange={(e) => setHourOfDay(parseFloat(e.target.value))}
+                className="w-full h-1.5 bg-[#1E344A] rounded-lg appearance-none cursor-pointer accent-[#126A64]"
+              />
+            </div>
+
+            {/* View Reset Buttons */}
+            <div className="pt-2 flex gap-2">
+              <button
+                type="button"
+                onClick={resetCamera}
+                className="flex-1 py-1.5 px-2.5 rounded-lg bg-[#142332] hover:bg-[#1E354C] border border-[#2B435C] text-xs font-bold text-white flex items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-sm"
+              >
+                <RotateCcw className="w-3.5 h-3.5 text-accent-primary" /> Isométrica
+              </button>
+              <button
+                type="button"
+                onClick={setTopDownView}
+                className="flex-1 py-1.5 px-2.5 rounded-lg bg-[#142332] hover:bg-[#1E354C] border border-[#2B435C] text-xs font-bold text-white flex items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-sm"
+              >
+                <Maximize2 className="w-3.5 h-3.5 text-accent-primary" /> Cenital
+              </button>
             </div>
           </div>
         )}
+
+        {/* Legend Panel Matching Plano Didáctico 2D */}
+        <div className="p-3 rounded-xl bg-[#0A121A] border-2 border-[#1E344A] text-white shadow-2xl text-xs space-y-2">
+          <div className="font-extrabold text-white uppercase tracking-wider text-[10px] border-b border-[#1E344A] pb-1 flex items-center justify-between">
+            <span>Convenciones de Riesgo</span>
+            <span className="text-[9px] text-[#4AD196] font-mono">PLANO UNT</span>
+          </div>
+          <div className="grid grid-cols-2 gap-2 text-[11px]">
+            <div className="flex items-center gap-2 font-medium">
+              <div className="w-3 h-3 rounded-full bg-[#B62C49] border-2 border-white/60 shrink-0 shadow-sm" />
+              <span className="text-white">No disponible (Crítico)</span>
+            </div>
+            <div className="flex items-center gap-2 font-medium">
+              <div className="w-3 h-3 rounded-full bg-[#C25B2B] border-2 border-white/60 shrink-0 shadow-sm" />
+              <span className="text-white">Limitado</span>
+            </div>
+            <div className="flex items-center gap-2 font-medium">
+              <div className="w-3 h-3 rounded-full bg-[#A96A00] border-2 border-white/60 shrink-0 shadow-sm" />
+              <span className="text-white">Verificación requerida</span>
+            </div>
+            <div className="flex items-center gap-2 font-medium">
+              <div className="w-3 h-3 rounded-full bg-[#178353] border-2 border-white/60 shrink-0 shadow-sm" />
+              <span className="text-white">Operativo</span>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 pt-1.5 border-t border-[#1E344A] text-blue-300 font-semibold text-[11px]">
+            <Droplets className="w-4 h-4 text-blue-400 shrink-0" />
+            <span>Canales y pozas activas ({rainIntensity}% lluvia)</span>
+          </div>
+        </div>
       </div>
+      )}
 
       {/* Hover Tooltip Preview */}
-      {hoveredBuilding && !selectedBuilding && (
-        <div className="absolute bottom-6 left-6 z-10 px-3 py-2 rounded-xl bg-sidebar/95 border border-accent-primary/40 text-white backdrop-blur-md shadow-2xl pointer-events-none flex items-center gap-2">
-          <Building2 className="w-4 h-4 text-accent-primary" />
+      {!hideAllMenus && hoveredBuilding && !selectedBuilding && (
+        <div className="absolute bottom-6 left-6 z-10 px-3.5 py-2.5 rounded-xl bg-[#0A121A] border-2 border-accent-primary text-white shadow-2xl pointer-events-none flex items-center gap-2.5">
+          <span className="font-mono font-bold text-xs px-2 py-0.5 rounded bg-accent-primary/40 border border-accent-primary">
+            {getBuildingCode(hoveredBuilding)}
+          </span>
           <div>
-            <div className="text-xs font-semibold">{hoveredBuilding.name}</div>
-            <div className="text-[10px] text-white/60">
-              {hoveredBuilding.category || hoveredBuilding.type} • Altura: {hoveredBuilding.height}m
+            <div className="text-xs font-bold text-white">{hoveredBuilding.name}</div>
+            <div className="text-[10px] text-white/70">
+              {hoveredBuilding.category || hoveredBuilding.type} • {hoveredBuilding.height}m altura
             </div>
           </div>
         </div>
       )}
 
       {/* Dynamic Compass Widget */}
-      <div className="absolute bottom-4 right-4 z-10 pointer-events-none">
-        <canvas ref={compassCanvasRef} className="w-[70px] h-[70px]" />
-      </div>
+      {!hideAllMenus && (
+        <div className="absolute bottom-4 right-4 z-10 pointer-events-none">
+          <canvas ref={compassCanvasRef} className="w-[70px] h-[70px]" />
+        </div>
+      )}
 
-      {/* Selected Building Detail Drawer / Modal */}
-      {selectedBuilding && (
-        <div className="absolute top-4 right-4 bottom-4 z-20 w-80 max-w-[calc(100vw-32px)] bg-surface border border-subtle rounded-2xl shadow-2xl p-4 flex flex-col text-primary animate-in fade-in slide-in-from-right duration-200 overflow-y-auto">
+      {/* Selected Building Detail Drawer - RIGHT SIDE (Clean slide-in) */}
+      {!hideAllMenus && selectedBuilding && (
+        <div className="absolute top-16 right-4 bottom-4 z-30 w-84 max-w-[calc(100vw-32px)] bg-surface border-2 border-subtle dark:border-[#2C4863] rounded-2xl shadow-[0_16px_48px_rgba(0,0,0,0.7)] p-4 flex flex-col text-primary animate-in fade-in slide-in-from-right duration-200 overflow-y-auto">
           {/* Header */}
           <div className="flex items-start justify-between pb-3 border-b border-subtle">
             <div className="space-y-0.5">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-accent-primary">
-                {selectedBuilding.category || selectedBuilding.type}
-              </span>
-              <h3 className="font-display font-semibold text-sm leading-snug">{selectedBuilding.name}</h3>
+              <div className="flex items-center gap-1.5">
+                <span
+                  className="font-mono font-extrabold text-xs px-2 py-0.5 rounded text-white shadow-sm"
+                  style={{ backgroundColor: selectedBuildingRisk?.color || '#126A64' }}
+                >
+                  {getBuildingCode(selectedBuilding)}
+                </span>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-muted">
+                  {selectedBuilding.category || selectedBuilding.type}
+                </span>
+              </div>
+              <h3 className="font-display font-semibold text-sm leading-snug pt-1">{selectedBuilding.name}</h3>
             </div>
             <button
               onClick={() => setSelectedBuilding(null)}
-              className="p-1 rounded-md text-muted hover:text-primary hover:bg-surface-2 transition-colors"
+              className="p-1.5 rounded-lg text-muted hover:text-primary hover:bg-surface-2 transition-colors cursor-pointer border border-transparent hover:border-subtle"
             >
               <X className="w-4 h-4" />
             </button>
           </div>
 
+          {/* Operational Status Pill */}
+          <div className="py-2.5 border-b border-subtle">
+            <div
+              className="p-2 rounded-lg text-xs font-semibold flex items-center justify-between"
+              style={{
+                backgroundColor: `${selectedBuildingRisk?.color}18`,
+                color: selectedBuildingRisk?.color,
+                border: `1px solid ${selectedBuildingRisk?.color}40`,
+              }}
+            >
+              <div className="flex items-center gap-1.5">
+                <ShieldCheck className="w-4 h-4" />
+                <span>{selectedBuildingRisk?.label}</span>
+              </div>
+              <span className="font-mono text-[10px] font-bold uppercase">
+                {selectedBuildingRisk?.status}
+              </span>
+            </div>
+          </div>
+
           {/* Building Physical Stats */}
-          <div className="py-3 border-b border-subtle grid grid-cols-2 gap-2 text-xs">
+          <div className="py-2.5 border-b border-subtle grid grid-cols-2 gap-2 text-xs">
             <div className="p-2 rounded-lg bg-surface-2">
               <span className="text-[10px] text-muted block">Altura estructural</span>
               <span className="font-semibold text-primary">{selectedBuilding.height} metros</span>
             </div>
             <div className="p-2 rounded-lg bg-surface-2">
-              <span className="text-[10px] text-muted block">ID CAD Geoespacial</span>
+              <span className="text-[10px] text-muted block">ID Plano CAD</span>
               <span className="font-mono text-[11px] text-primary">{selectedBuilding.id}</span>
             </div>
           </div>
 
           {/* Linked NEXO UNT Operational State */}
           {linkedFacility ? (
-            <div className="py-3 space-y-3 flex-1">
+            <div className="py-2.5 space-y-3 flex-1">
               <div>
-                <span className="text-[10px] font-bold uppercase tracking-wider text-muted block mb-1.5">
-                  Instalación Lógica Asociada
+                <span className="text-[10px] font-bold uppercase tracking-wider text-muted block mb-1">
+                  Instalación Lógica Vinculada
                 </span>
-                <div className="p-2.5 rounded-xl border border-subtle bg-surface-2/60 flex items-center justify-between">
+                <div className="p-2 rounded-xl border border-subtle bg-surface-2/60 flex items-center justify-between">
                   <div>
                     <div className="font-semibold text-xs text-primary">{linkedFacility.name}</div>
                     <div className="text-[10px] text-muted">{linkedFacility.zone}</div>
@@ -1185,8 +1612,8 @@ export function CampusMap3D() {
 
               {/* Services in this facility */}
               <div>
-                <span className="text-[10px] font-bold uppercase tracking-wider text-muted block mb-1.5">
-                  Estado de Servicios en Instalación
+                <span className="text-[10px] font-bold uppercase tracking-wider text-muted block mb-1">
+                  Servicios Evaluados en Escenario
                 </span>
                 <div className="space-y-1.5">
                   {linkedFacility.serviceIds.map((sId) => {
@@ -1200,7 +1627,7 @@ export function CampusMap3D() {
                       >
                         <div className="flex items-center gap-1.5">
                           <Zap className="w-3.5 h-3.5 text-accent-primary" />
-                          <span className="font-medium">{srv.name}</span>
+                          <span className="font-medium text-[11px]">{srv.name}</span>
                         </div>
                         <StatusBadge status={status} />
                       </div>
@@ -1209,15 +1636,15 @@ export function CampusMap3D() {
                 </div>
               </div>
 
-              {/* Academic Continuity in this facility */}
+              {/* Continuity Activities */}
               {linkedActivities.length > 0 && (
                 <div>
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-muted block mb-1.5">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-muted block mb-1">
                     Actividades de Continuidad ({linkedActivities.length})
                   </span>
                   <div className="space-y-1.5">
                     {linkedActivities.map((act) => (
-                      <div key={act.id} className="p-2 rounded-lg border border-subtle bg-surface text-xs space-y-1">
+                      <div key={act.id} className="p-2 rounded-lg border border-subtle bg-surface text-xs space-y-0.5">
                         <div className="font-medium text-primary text-[11px]">{act.title}</div>
                         <div className="flex items-center justify-between text-[10px] text-muted">
                           <span>{act.category}</span>
@@ -1240,9 +1667,9 @@ export function CampusMap3D() {
           )}
 
           {/* Footer Notice */}
-          <div className="pt-3 border-t border-subtle text-[10px] text-muted flex items-center justify-between">
+          <div className="pt-2 border-t border-subtle text-[10px] text-muted flex items-center justify-between">
             <span>Escenario simulado</span>
-            <span className="text-accent-primary font-medium">UNT 3D Engine</span>
+            <span className="text-accent-primary font-medium">NEXO UNT 3D</span>
           </div>
         </div>
       )}
