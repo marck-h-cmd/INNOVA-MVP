@@ -23,9 +23,52 @@ NEXO UNT conecta de manera determinista y trazable:
 ## Ejecución y pruebas
 
 ```bash
+# Instalación y desarrollo local
 npm install
 npm run dev
-npm run build
+
+# Verificación y pruebas
 npm run lint
-npx --yes tsx --test src/tests/engines.test.ts
+npm test
+npm run build
 ```
+
+## Despliegue con Docker
+
+NEXO UNT incluye soporte nativo para despliegue en contenedores optimizados con Node.js 22 Alpine, arquitectura multi-etapa y usuario no privilegiado (`node`).
+
+### Usando Docker Compose (Recomendado)
+
+```bash
+# 1. Configurar variables de entorno (opcional)
+cp .env.example .env
+
+# 2. Construir e iniciar el contenedor en segundo plano
+docker compose up -d --build
+
+# 3. Ver logs y estado
+docker compose logs -f
+docker compose ps
+
+# 4. Detener el servicio
+docker compose down
+```
+
+### Usando Docker CLI
+
+```bash
+# Construir imagen
+docker build -t nexo-unt .
+
+# Ejecutar contenedor
+docker run -d \
+  --name nexo-unt \
+  --restart unless-stopped \
+  -p 3000:3000 \
+  -e NODE_ENV=production \
+  -e GEMINI_API_KEY="tu-api-key" \
+  nexo-unt
+```
+
+El servicio estará disponible en `http://localhost:3000` con healthcheck automático en `/api/health`.
+
