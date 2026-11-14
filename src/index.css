@@ -1,0 +1,178 @@
+@import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
+
+:root {
+  --bg-canvas: #F6F7F5;
+  --bg-surface: #FFFFFF;
+  --bg-surface-2: #EDF1F0;
+  --bg-sidebar: #101C27;
+  --accent-primary: #126A64;
+  --accent-primary-hover: #0C514D;
+  --accent-burgundy: #80263C;
+  --accent-gold: #B78331;
+  --text-primary: #14242D;
+  --text-secondary: #53636B;
+  --border-subtle: #DCE3E2;
+
+  --status-low: #178353;
+  --status-low-bg: #E7F5EE;
+  --status-moderate: #A96A00;
+  --status-moderate-bg: #FDF4E2;
+  --status-high: #C25B2B;
+  --status-high-bg: #FCECE5;
+  --status-critical: #B62C49;
+  --status-critical-bg: #FBE9ED;
+
+  --font-display: 'Manrope', system-ui, -apple-system, sans-serif;
+  --font-sans: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
+}
+
+.dark {
+  --bg-canvas: #0C151D;
+  --bg-surface: #15242E;
+  --bg-surface-2: #20313B;
+  --bg-sidebar: #08121A;
+  --accent-primary: #75D5C4;
+  --accent-primary-hover: #5CC3B1;
+  --accent-burgundy: #E36D88;
+  --accent-gold: #E0AC52;
+  --text-primary: #F4F7F6;
+  --text-secondary: #BDCCCF;
+  --border-subtle: #344852;
+
+  --status-low: #4AD196;
+  --status-low-bg: rgba(23, 131, 83, 0.20);
+  --status-moderate: #F0B44C;
+  --status-moderate-bg: rgba(169, 106, 0, 0.22);
+  --status-high: #F28B5B;
+  --status-high-bg: rgba(194, 91, 43, 0.22);
+  --status-critical: #F2728C;
+  --status-critical-bg: rgba(182, 44, 73, 0.24);
+}
+
+@layer base {
+  html {
+    font-family: var(--font-sans);
+    background-color: var(--bg-canvas);
+    color: var(--text-primary);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  h1, h2, h3, .font-display {
+    font-family: var(--font-display);
+  }
+
+  .font-mono, code, pre {
+    font-family: var(--font-mono);
+  }
+
+  *:focus-visible {
+    outline: 2px solid var(--accent-primary);
+    outline-offset: 2px;
+  }
+}
+
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+.text-balance {
+  text-wrap: balance;
+}
+
+/* Precision Range Sliders */
+input[type='range'].nexo-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 6px;
+  border-radius: 9999px;
+  background: var(--border-subtle);
+  outline: none;
+}
+
+input[type='range'].nexo-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 9999px;
+  background: var(--accent-primary);
+  border: 2px solid var(--bg-surface);
+  box-shadow: 0 1px 3px rgba(16, 28, 39, 0.25);
+  cursor: pointer;
+  transition: transform 150ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+input[type='range'].nexo-slider:not(:disabled)::-webkit-slider-thumb:hover {
+  transform: scale(1.14);
+}
+
+input[type='range'].nexo-slider::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 9999px;
+  background: var(--accent-primary);
+  border: 2px solid var(--bg-surface);
+  box-shadow: 0 1px 3px rgba(16, 28, 39, 0.25);
+  cursor: pointer;
+}
+
+/* Subtle Scrollbars */
+::-webkit-scrollbar {
+  width: 7px;
+  height: 7px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-subtle);
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-secondary);
+}
+
+/* Directional SVG flow animation for active dependency propagation & routes */
+@keyframes nexo-flow-dash {
+  from {
+    stroke-dashoffset: 24;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+.nexo-animated-flow {
+  animation: nexo-flow-dash 1.35s linear infinite;
+}
+
+/* Accessibility & Reduced Motion */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  .nexo-animated-flow {
+    animation: none !important;
+  }
+}
+
+.reduce-motion *, .reduce-motion *::before, .reduce-motion *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+}
+
+.reduce-motion .nexo-animated-flow {
+  animation: none !important;
+}

@@ -1,0 +1,6 @@
+{
+  "name": "NEXO UNT",
+  "description": "Plataforma GovTech de preparación, coordinación y continuidad universitaria ante lluvias intensas e inundaciones. Preparación y continuidad conectadas.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

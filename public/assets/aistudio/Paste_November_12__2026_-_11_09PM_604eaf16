@@ -1,0 +1,1413 @@
+
+# NEXO UNT — PROMPT MAESTRO DE DESARROLLO
+
+Actúa como un equipo de ingeniería de producto formado por un arquitecto de software senior, un diseñador UX/UI de nivel internacional, un desarrollador full-stack especializado en React y un experto en productos GovTech.
+
+Tu misión es construir dentro de Google AI Studio Build una aplicación web funcional, sofisticada y visualmente excepcional llamada NEXO UNT.
+
+No quiero una landing page ni un dashboard de plantilla. Quiero un producto realista, coherente y demostrable, con arquitectura mantenible, motores de decisión funcionales, módulos conectados y una experiencia de usuario digna de una startup tecnológica.
+
+Desarrolla directamente la aplicación. Toma las decisiones técnicas secundarias que sean necesarias, pero respeta las funcionalidades, reglas de negocio y estándares de calidad establecidos aquí.
+
+No generes únicamente una descripción del proyecto: implementa el código y haz funcionar el sistema.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+1. VISIÓN Y CONTEXTO DEL PRODUCTO
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+PRODUCTO: NEXO UNT
+LEMA: Preparación y continuidad conectadas.
+CATEGORÍA: GovTech / CivicTech / Gestión del riesgo.
+INSTITUCIÓN DE REFERENCIA: Universidad Nacional de Trujillo, Perú.
+CONCURSO: Hackathon Innova Norte 3G 2026.
+DESAFÍO: Gestión de riesgos y desastres ante el Fenómeno El Niño.
+
+NEXO UNT es una plataforma digital de apoyo a la preparación, coordinación y continuidad universitaria frente a lluvias intensas e inundaciones.
+
+PROBLEMA:
+
+Durante una emergencia, la interrupción de electricidad, agua, conectividad o accesos puede afectar simultáneamente distintos servicios universitarios.
+
+La información relacionada con avisos, responsables, protocolos, servicios y acciones puede estar distribuida en diferentes documentos y áreas. Esto dificulta comprender las consecuencias de un incidente y organizar decisiones oportunas.
+
+PROPUESTA DE VALOR:
+
+"Del aviso oficial a una acción verificable."
+
+NEXO conecta:
+
+FUENTE → ESCENARIO → REGLA → DEPENDENCIA → ACCIÓN → CONTINUIDAD → COMUNICACIÓN → BITÁCORA.
+
+DIFERENCIADOR:
+
+El sistema no se limita a visualizar incidentes. Permite comprender cómo una interrupción puede afectar servicios relacionados, qué acciones deben revisarse, quién debe intervenir y por qué se generó cada recomendación.
+
+Toda recomendación tiene que ser explicable, reproducible y trazable.
+
+EJEMPLO CENTRAL:
+
+Se registra una interrupción eléctrica simulada.
+
+NEXO identifica servicios que dependen del suministro eléctrico, marca qué componentes requieren verificación, activa acciones previamente definidas, identifica actividades potencialmente afectadas y prepara un borrador de comunicación.
+
+El resultado cambia realmente según las entradas del usuario.
+
+NO se trata de una predicción meteorológica ni de un sistema oficial de emergencias.
+
+RÚBRICA DEL CONCURSO:
+
+- Funcionalidad y demostración: 25 puntos.
+- Innovación: 15 puntos.
+- Problema y usuario: 15 puntos.
+- Validación: 15 puntos.
+- Viabilidad e impacto: 15 puntos.
+- Seguridad y ética: 10 puntos.
+- Pitch: 5 puntos.
+
+Prioriza la funcionalidad comprobable y la claridad de las decisiones. La primera etapa del concurso evalúa especialmente problema, innovación y funcionamiento del prototipo.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+2. EXPERIENCIA DE USUARIO Y ROLES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Diseña NEXO como una aplicación con dos experiencias principales:
+
+A. CENTRO DE CONTROL
+Orientado a responsables de coordinación, brigadistas y autoridades. Ofrece información detallada, acciones, análisis y decisiones.
+
+B. PORTAL DE COMUNIDAD
+Orientado a estudiantes y docentes. Presenta información resumida, comprensible y sin complejidad administrativa.
+
+Implementa un selector de rol visible en la cabecera para demostrar ambos entornos.
+
+ROLES:
+
+ESTUDIANTE
+- Consulta el escenario.
+- Consulta comunicaciones aprobadas.
+- Revisa actividades ficticias afectadas.
+- Confirma lectura de mensajes simulados.
+- No modifica incidentes ni decisiones.
+
+DOCENTE
+- Consulta actividades académicas afectadas.
+- Revisa alternativas de continuidad.
+- Registra observaciones de demostración.
+- No aprueba comunicaciones.
+
+PERSONAL ADMINISTRATIVO
+- Registra incidencias ficticias.
+- Consulta servicios.
+- Actualiza acciones asignadas a su rol.
+- No modifica reglas maestras.
+
+BRIGADISTA
+- Consulta protocolos y verificaciones.
+- Actualiza tareas preventivas simuladas.
+- Revisa observaciones sobre servicios.
+- No declara zonas seguras ni ordena evacuaciones.
+
+COORDINADOR GRD
+- Crea y modifica escenarios.
+- Registra interrupciones.
+- Consulta dependencias.
+- Gestiona acciones.
+- Prepara borradores.
+- Propone alternativas de continuidad.
+
+AUTORIDAD
+- Revisa decisiones pendientes.
+- Aprueba o rechaza comunicaciones simuladas.
+- Aprueba alternativas de continuidad de demostración.
+- Consulta la trazabilidad.
+
+Los permisos deben afectar realmente a botones, formularios y operaciones.
+
+Como es una demostración, los roles NO constituyen autenticación institucional real. Mostrar esta limitación discretamente.
+
+El usuario debe poder cambiar de rol sin perder el escenario actual.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+3. TECNOLOGÍAS Y ARQUITECTURA
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Utiliza:
+
+- React + TypeScript estricto.
+- Vite.
+- Tailwind CSS.
+- Framer Motion.
+- lucide-react.
+- Recharts.
+- Zustand.
+- React Router.
+- Leaflet + OpenStreetMap.
+- Zod para validar datos.
+- Vitest para probar los motores principales.
+
+Elige versiones compatibles con el entorno.
+
+ARQUITECTURA:
+
+Organiza el proyecto por responsabilidades:
+
+src/
+  app/
+  components/
+    layout/
+    ui/
+    charts/
+  features/
+    dashboard/
+    scenarios/
+    map/
+    prevention/
+    dependencies/
+    actions/
+    communications/
+    continuity/
+    coordination/
+    community/
+    explainability/
+    audit/
+    demo/
+    settings/
+  store/
+  data/
+  hooks/
+  lib/
+  types/
+  styles/
+  tests/
+
+No concentres toda la aplicación en App.tsx.
+
+Cada módulo debe separar:
+1. Componentes visuales.
+2. Lógica de negocio.
+3. Tipos y contratos.
+4. Estado.
+5. Datos.
+
+Utiliza componentes reutilizables, tipado estricto, estados derivados y manejo de errores.
+
+ESTRATEGIA DE DATOS:
+
+Sin backend obligatorio.
+
+Utiliza módulos TypeScript/JSON locales, Zustand para estado y localStorage para guardar preferencias y cambios del escenario.
+
+La lectura y escritura de localStorage debe protegerse con try/catch y validación de esquema.
+
+El motor principal debe funcionar sin internet.
+
+Si el entorno ofrece servicios externos, estos no deben ser requisitos para ejecutar la demo.
+
+No construir una integración institucional ficticia.
+
+MODELO DE DOMINIO:
+
+Implementa interfaces tipadas para:
+
+Source
+Scenario
+ScenarioEvent
+Facility
+Service
+Dependency
+Rule
+Action
+Protocol
+Alert
+Approval
+DeliveryReceipt
+ContinuityActivity
+ContinuityPlan
+RiskExplanation
+AuditEntry
+Role
+
+Contratos esenciales:
+
+Scenario:
+id, title, description, simulated, inputs, serviceOverrides, sourceIds.
+
+Service:
+id, name, category, status, criticality, simulated.
+
+Dependency:
+id, sourceServiceId, targetServiceId, condition, evidenceType, sourceId, simulated.
+
+Rule:
+id, condition, priority, action, responsibleRole, justification, sourceId, version.
+
+Action:
+id, ruleId, scenarioId, status, responsibleRole, evidence, simulated.
+
+Alert:
+id, title, body, status, creatorRole, approverRole, approvedAt, simulated.
+
+ContinuityActivity:
+id, title, category, facilityId, requiredServices, constraints, operatingMode, simulated.
+
+AuditEntry:
+id, timestamp, actorRole, eventType, previousState, nextState, scenarioId.
+
+Utiliza IDs estables y relaciones coherentes.
+
+No guardar datos calculados redundantes si pueden derivarse del estado.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+4. SISTEMA DE DISEÑO PREMIUM
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Quiero una identidad visual original, sofisticada y profesional.
+
+Toma como referencia la calidad de composición de Linear, Stripe Dashboard y Vercel, pero no copies ninguno de sus diseños.
+
+ESTILO:
+
+Institucional contemporáneo, tecnológico, confiable, con excelente jerarquía de información.
+
+La estética debe transmitir un centro de coordinación moderno, no una página académica ni una plantilla administrativa antigua.
+
+IDENTIDAD VISUAL:
+
+Marca NEXO UNT con un símbolo original formado por nodos conectados que represente coordinación, continuidad y trazabilidad.
+
+No utilizar el escudo de la UNT como si se tuviera autorización.
+
+COLORES:
+
+Modo claro:
+Background: #F6F7F5
+Surface: #FFFFFF
+Surface secondary: #EDF1F0
+Sidebar: #101C27
+Primary: #126A64
+Primary hover: #0C514D
+Accent burgundy: #80263C
+Accent gold: #B78331
+Text primary: #14242D
+Text secondary: #53636B
+Border: #DCE3E2
+
+Modo oscuro:
+Background: #0C151D
+Surface: #15242E
+Surface secondary: #20313B
+Sidebar: #08121A
+Primary: #75D5C4
+Text primary: #F4F7F6
+Text secondary: #BDCCCF
+Border: #344852
+
+ESTADOS SEMÁNTICOS:
+
+Bajo: verde #178353.
+Moderado: ámbar #A96A00.
+Alto: naranja #C25B2B.
+Crítico: granate #B62C49.
+
+Adapta fondos y textos para cumplir WCAG AA.
+
+Los estados críticos deben distinguirse también mediante texto e iconografía, no solamente colores.
+
+TIPOGRAFÍA:
+
+Manrope: títulos y números destacados.
+Inter: navegación, tablas, controles y contenido.
+
+Tamaños orientativos:
+Display: 40px.
+H1: 30px.
+H2: 24px.
+H3: 20px.
+Body: 15px.
+Secondary: 13px.
+Caption: 12px.
+
+Usa escala de espaciado basada en 8px.
+
+Radios predominantes: 10px, 14px y 18px.
+
+Sombras discretas y superficies claramente diferenciadas.
+
+LAYOUT DESKTOP:
+
+Sidebar fija de 256px, fondo oscuro.
+Header superior de 72px.
+Contenido máximo de 1480px.
+Grid flexible de 12 columnas.
+
+La sidebar debe organizarse por grupos:
+
+GENERAL
+- Centro de control
+- Escenarios
+- Explorador territorial
+
+OPERACIONES
+- Dependencias
+- Acciones
+- Comunicaciones
+- Continuidad
+- Protocolos
+
+TRANSPARENCIA
+- Explicabilidad
+- Bitácora
+- Fuentes
+
+EXPERIENCIA
+- Mi comunidad
+- Demo interactiva
+- Configuración
+
+El elemento activo tendrá un tratamiento visual claramente diferenciado.
+
+CABECERA:
+
+Izquierda:
+Breadcrumb y título de pantalla.
+
+Derecha:
+Indicador de conexión.
+Selector de rol.
+Cambio de tema.
+Acceso a búsqueda.
+Botón de escenario cuando corresponda.
+
+MOBILE-FIRST:
+
+En smartphones, sustituye la sidebar por navegación inferior y un drawer de módulos.
+
+El centro de control se transforma en tarjetas apiladas.
+
+Las tablas se convierten en tarjetas filtrables.
+
+La vista para estudiantes debe ser especialmente clara y ligera.
+
+COMPONENTES REUTILIZABLES:
+
+- MetricCard.
+- StatusBadge.
+- SourceBadge.
+- SimulationBadge.
+- ActionCard.
+- ServiceNode.
+- ScenarioCard.
+- RiskIndicator.
+- Timeline.
+- DataTable.
+- Modal.
+- Drawer.
+- Toast.
+- Tabs.
+- CommandPalette.
+- Skeleton.
+- EmptyState.
+- ErrorState.
+
+MICROINTERACCIONES:
+
+Hover: 140ms.
+Cambio de estado: 200ms.
+Modal: 240ms.
+Grafo: 450ms.
+KPIs: 350ms.
+
+Usa Framer Motion con propósito: mostrar relaciones, cambios y prioridades.
+
+Respeta prefers-reduced-motion.
+
+NO QUIERO:
+
+Diseño Bootstrap.
+Azul corporativo genérico.
+Gradientes exagerados.
+Sombras grandes.
+Emojis como íconos.
+Tarjetas uniformes sin jerarquía.
+Formularios crudos.
+Gráficos decorativos.
+Botones sin efectos.
+Páginas que parezcan creadas por diferentes equipos.
+
+Todas las pantallas deben compartir una misma identidad.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+5. MOTORES DE NEGOCIO
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+ESTOS MOTORES SON EL CORAZÓN DE NEXO.
+
+Deben funcionar de verdad, no simular sus resultados mediante textos estáticos.
+
+A. MOTOR DE REGLAS
+
+Una regla contiene:
+- Identificador.
+- Condición.
+- Prioridad.
+- Acción sugerida.
+- Responsable.
+- Justificación.
+- Fuente documental o marca de simulación.
+- Versión.
+
+Ejemplo:
+
+SI electricidad = NO_DISPONIBLE
+ENTONCES:
+- Generar acción "Verificar suministro eléctrico".
+- Generar acción "Revisar servicios dependientes".
+- Marcar actividades relacionadas para evaluación.
+
+Las reglas deben ejecutarse al modificar el escenario.
+
+Evitar duplicados.
+Permitir consultar por qué se activó cada regla.
+Registrar cambios de estado.
+Distinguir reglas activas de acciones históricas ya cerradas.
+
+B. MOTOR DE DEPENDENCIAS
+
+Utiliza un grafo dirigido.
+
+Relaciones iniciales:
+
+Electricidad → Agua.
+Electricidad → Conectividad.
+Agua → Servicios administrativos.
+Conectividad → Actividades académicas remotas.
+Accesos → Actividades presenciales.
+Electricidad → Instalaciones de demostración.
+
+La relación electricidad/agua tiene antecedentes documentales en la UNT; las demás deben identificarse como relaciones de ejemplo cuando no exista respaldo específico.
+
+IMPORTANTE:
+
+Una dependencia no demuestra automáticamente que el servicio esté fallando.
+
+Estados diferenciados:
+Operativo.
+En observación.
+Limitado.
+No disponible.
+Sin confirmar.
+
+Cuando cambia un servicio:
+- Resaltar nodos relacionados.
+- Calcular dependencias afectadas.
+- Solicitar verificaciones.
+- Actualizar acciones y actividades.
+- Mantener trazabilidad.
+
+Evita ciclos infinitos y propagaciones ambiguas.
+
+C. ÍNDICE DE ATENCIÓN OPERATIVA
+
+Implementa un indicador didáctico de 0 a 100.
+
+Variables normalizadas:
+- Intensidad de lluvia simulada: 30%.
+- Interrupción de servicios: 30%.
+- Restricción de accesos: 25%.
+- Impacto en continuidad: 15%.
+
+Fórmula:
+
+indice = redondear(
+  100 * (
+    0.30 * lluviaNormalizada +
+    0.30 * serviciosNormalizados +
+    0.25 * accesosNormalizados +
+    0.15 * continuidadNormalizada
+  )
+)
+
+Niveles:
+0-24: Bajo.
+25-49: Moderado.
+50-74: Alto.
+75-100: Crítico.
+
+Este índice NO representa riesgo físico oficial ni probabilidad de inundación.
+
+Mostrarlo siempre como:
+"Atención operativa simulada".
+
+La pantalla de explicabilidad debe mostrar todos sus componentes y pesos.
+
+D. MOTOR DE CONTINUIDAD
+
+Relaciona instalaciones, actividades y servicios requeridos.
+
+Ejemplo:
+
+Actividad:
+"Laboratorio Demo B"
+
+Requiere:
+Electricidad y agua.
+
+Si uno de esos servicios se declara no disponible, la actividad pasa a revisión.
+
+El sistema evalúa alternativas:
+- Mantener actividad si las condiciones lo permiten.
+- Reprogramar.
+- Evaluar otro espacio ficticio.
+- Evaluar modalidad remota cuando sea compatible.
+- Suspender temporalmente.
+
+No proponer actividad virtual como garantizada si la conectividad está comprometida.
+
+No declarar un ambiente seguro sin evaluación competente.
+
+Las alternativas son sugerencias para aprobación humana.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+6. PANTALLAS Y FUNCIONALIDADES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Construye las siguientes pantallas integradas.
+
+No las trates como módulos independientes: todas deben consumir y actualizar el mismo escenario y sus resultados.
+
+6.1. CENTRO DE CONTROL — /
+
+OBJETIVO:
+Obtener una visión inmediata del escenario y sus consecuencias operativas.
+
+CABECERA:
+
+Título:
+"Centro de control"
+
+Subtítulo:
+"Información conectada para decisiones mejor fundamentadas."
+
+Acción principal:
+"Iniciar escenario"
+
+PRIMER BLOQUE:
+Cuatro tarjetas KPI:
+
+- Atención operativa.
+- Servicios que requieren verificación.
+- Acciones pendientes.
+- Actividades potencialmente afectadas.
+
+Los valores se calculan desde el motor.
+
+SEGUNDO BLOQUE:
+
+Izquierda, 8 columnas:
+Grafo visual de dependencias.
+
+Derecha, 4 columnas:
+"Acciones que requieren atención".
+
+TERCER BLOQUE:
+
+Gráfico de evolución del escenario.
+Estado de continuidad.
+Actividad reciente.
+
+CUARTO BLOQUE:
+
+"Fuentes de referencia"
+con institución, fecha y enlace.
+
+Cuando se modifique un servicio desde otra pantalla, este dashboard debe reflejarlo inmediatamente.
+
+6.2. LABORATORIO DE ESCENARIOS — /escenarios
+
+Pantalla donde se crean y modifican situaciones.
+
+Cinco escenarios predefinidos:
+- Preparación ante lluvias intensas.
+- Interrupción eléctrica.
+- Restricción de accesos.
+- Conectividad limitada.
+- Recuperación progresiva.
+
+Cada tarjeta muestra:
+Nombre.
+Descripción.
+Nivel de atención simulado.
+Servicios involucrados.
+Acciones estimadas por el motor.
+Botón "Explorar".
+
+Al abrir un escenario, mostrar un panel de configuración.
+
+Controles:
+- Intensidad de lluvia.
+- Interrupción de servicios.
+- Restricción de accesos.
+- Impacto en continuidad.
+- Estado de cada servicio.
+
+Cada cambio debe recalcular el motor.
+
+Añadir comparación "Antes / Después" que permita observar la variación de:
+- Índice.
+- Servicios.
+- Reglas activas.
+- Acciones.
+- Actividades afectadas.
+
+6.3. EXPLORADOR TERRITORIAL — /mapa
+
+Esta pantalla tendrá dos experiencias separadas.
+
+A. MAPA PÚBLICO
+
+Leaflet + OpenStreetMap.
+
+Mostrar Trujillo como contexto geográfico.
+
+Controles de zoom, pantalla completa, búsqueda visual y atribución.
+
+NO dibujar zonas de riesgo inventadas sobre el mapa real.
+
+Mostrar una tarjeta institucional de referencia para Ciudad Universitaria, sin atribuirle niveles de peligro.
+
+B. PLANO DIDÁCTICO
+
+Crear un plano SVG original de un campus completamente ficticio.
+
+Contendrá:
+5 edificios.
+3 accesos.
+2 puntos de encuentro ficticios.
+5 rutas ficticias.
+Áreas verdes.
+Vías internas.
+Servicios asociados.
+
+Capas seleccionables:
+- Instalaciones.
+- Estado de servicios.
+- Atención operativa.
+- Rutas didácticas.
+- Dependencias.
+
+Al seleccionar un edificio:
+Abrir panel lateral con sus servicios, actividades, estado y acciones.
+
+Al ejecutar una interrupción:
+Cambiar colores de los elementos afectados y resaltar relaciones.
+
+El usuario debe poder bloquear un tramo ficticio y recalcular rutas didácticas mediante un grafo simple.
+
+Etiqueta permanente:
+"Plano ficticio. No representa rutas ni zonas seguras oficiales de la UNT."
+
+6.4. PREVENCIÓN Y PROTOCOLOS — /prevencion
+
+Pantalla de información preventiva.
+
+Organizar en:
+ANTES.
+DURANTE.
+DESPUÉS.
+
+Contenidos:
+- Preparación ante lluvias.
+- Consulta de fuentes oficiales.
+- Verificación de servicios.
+- Comunicación responsable.
+- Continuidad.
+- Recuperación.
+
+Cada protocolo incluye:
+Objetivo.
+Acciones generales.
+Rol relacionado.
+Fuente.
+Advertencias.
+
+Distinguir recomendaciones verificadas de instrucciones didácticas.
+
+Añadir acceso a rutas y puntos de encuentro ficticios desde el plano de demostración.
+
+6.5. DEPENDENCIAS — /dependencias
+
+Este módulo debe ser uno de los visualmente más impresionantes.
+
+Mostrar un grafo interactivo con nodos y relaciones.
+
+Nodos principales:
+Electricidad.
+Agua.
+Conectividad.
+Accesos.
+Servicios académicos.
+Servicios administrativos.
+
+Cada nodo muestra:
+Ícono.
+Nombre.
+Estado.
+Número de dependencias.
+Indicador visual.
+
+Al seleccionarlo:
+- Resaltar conexiones.
+- Mostrar dependientes.
+- Mostrar acciones.
+- Consultar fuente.
+- Cambiar estado, si el rol lo permite.
+
+Permitir comparar un servicio operativo frente a una interrupción.
+
+Animar las relaciones afectadas.
+
+No confundir una dependencia hipotética con un fallo confirmado.
+
+6.6. CENTRO DE ACCIONES — /acciones
+
+Vista Kanban y tabla.
+
+Estados:
+Pendiente.
+En revisión.
+Verificada.
+Cerrada.
+
+Cada acción:
+- Título.
+- Prioridad.
+- Responsable por rol.
+- Servicio.
+- Regla origen.
+- Justificación.
+- Evidencia.
+- Estado.
+
+Interacciones:
+Cambiar estado.
+Filtrar.
+Buscar.
+Consultar detalle.
+Abrir fuente.
+Ver historial.
+
+Los cambios deben actualizar los indicadores globales.
+
+6.7. COMUNICACIONES — /comunicaciones
+
+Pantalla completa para gestionar avisos simulados.
+
+Secciones:
+Borradores.
+Pendientes de aprobación.
+Aprobados.
+Difundidos en simulación.
+Historial.
+
+EDITOR:
+Título.
+Audiencia.
+Escenario.
+Contenido.
+Fuente.
+Responsable.
+
+FLUJO:
+Borrador → Revisión → Aprobación → Difusión simulada.
+
+Solo el rol Autoridad puede aprobar.
+
+Permitir rechazar con observación.
+
+La difusión utiliza cinco buzones ficticios internos.
+
+Mostrar:
+Entregado.
+Pendiente.
+Leído.
+Sin confirmar.
+
+Las lecturas deben producirse mediante interacciones reales del usuario con los buzones ficticios.
+
+No enviar SMS, correos, WhatsApp ni notificaciones reales.
+
+6.8. CONTINUIDAD — /continuidad
+
+Pantalla para analizar interrupciones académicas y administrativas.
+
+Diseño:
+Resumen superior.
+Actividades afectadas.
+Servicios requeridos.
+Alternativas.
+Decisiones pendientes.
+
+Para cada actividad:
+- Título.
+- Tipo.
+- Instalación ficticia.
+- Servicios requeridos.
+- Estado.
+- Alternativas sugeridas.
+- Restricciones.
+
+Mostrar la comparación:
+
+"Actividad original"
+versus
+"Alternativa propuesta".
+
+Las decisiones deben ser explicables.
+
+Si no existe información suficiente, mostrar:
+"No es posible determinar una alternativa válida con los datos disponibles."
+
+6.9. SALA DE COORDINACIÓN — /coordinacion
+
+Pantalla desktop de alta densidad visual.
+
+Composición en tres paneles:
+1. Servicios e incidentes.
+2. Dependencias y situación.
+3. Acciones y decisiones.
+
+Parte inferior:
+Continuidad.
+Comunicaciones.
+Bitácora.
+
+Permitir filtros por:
+Estado.
+Servicio.
+Responsable.
+Prioridad.
+Escenario.
+
+Toda modificación debe reflejarse en tiempo real.
+
+6.10. MI COMUNIDAD — /comunidad
+
+Diseño principalmente móvil.
+
+Pantalla mucho más simple que coordinación.
+
+Contenido:
+Estado del escenario.
+Mensajes aprobados.
+Actividades ficticias.
+Información preventiva.
+Fuentes oficiales.
+
+Texto de ejemplo:
+
+"Escenario simulado: se está evaluando la disponibilidad de determinados servicios universitarios. No existe una instrucción institucional real asociada a este ejercicio."
+
+Permitir confirmar lectura simulada.
+
+No mostrar borradores como comunicados aprobados.
+
+6.11. EXPLICABILIDAD — /explicabilidad
+
+Esta sección es esencial para defender la innovación.
+
+Título:
+"¿Por qué NEXO recomienda esto?"
+
+Cada recomendación debe mostrar:
+
+1. Qué evento la activó.
+2. Qué condición se cumplió.
+3. Qué regla se ejecutó.
+4. Qué servicio está relacionado.
+5. Qué acción se propone.
+6. Quién debe revisarla.
+7. Qué fuente o supuesto la respalda.
+8. Qué limitaciones existen.
+
+Incluir:
+"¿Por qué este nivel de atención?"
+
+Mostrar fórmula, variables, pesos y resultado exacto.
+
+6.12. BITÁCORA Y FUENTES
+
+/bitacora
+/fuentes
+
+BITÁCORA:
+
+Timeline de cambios.
+Acciones realizadas.
+Roles.
+Estados anteriores y nuevos.
+Fuentes asociadas.
+Hora de simulación.
+
+Filtros funcionales.
+Exportación CSV y JSON.
+
+FUENTES:
+
+Catálogo documental.
+Institución.
+Fecha.
+Ámbito.
+Enlace.
+Tipo de evidencia.
+Limitaciones.
+
+Separar:
+Fuente oficial.
+Documento histórico.
+Datos simulados.
+
+6.13. CONFIGURACIÓN — /configuracion
+
+Permitir:
+Cambiar tema.
+Reducir animaciones.
+Restablecer datos.
+Exportar estado local.
+Consultar privacidad.
+Consultar créditos y licencias.
+Acceder a ayuda.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+7. DATOS INICIALES Y COHERENCIA
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Usa datos sintéticos suficientes para que la aplicación se sienta viva.
+
+MÍNIMO:
+
+5 instalaciones ficticias.
+6 servicios.
+6 relaciones de dependencia.
+5 escenarios.
+8 reglas.
+10 actividades académicas/administrativas.
+10 acciones de ejemplo vinculadas a escenarios.
+5 comunicaciones.
+5 buzones ficticios.
+5 rutas didácticas.
+2 puntos de encuentro.
+Registros iniciales de bitácora.
+
+EJEMPLOS DE SERVICIOS:
+
+SRV-01: Electricidad.
+SRV-02: Agua.
+SRV-03: Conectividad.
+SRV-04: Accesos.
+SRV-05: Servicios académicos.
+SRV-06: Servicios administrativos.
+
+INSTALACIONES:
+
+ED-01: Edificio Demo A.
+ED-02: Laboratorio Demo B.
+ED-03: Biblioteca Demo C.
+ED-04: Administración Demo D.
+ED-05: Aula Demo E.
+
+ACTIVIDADES:
+
+ACT-01: Clase demostrativa A.
+ACT-02: Laboratorio demostrativo B.
+ACT-03: Consulta bibliográfica C.
+ACT-04: Atención administrativa D.
+ACT-05: Seminario demostrativo E.
+
+Completa las restantes con datos coherentes.
+
+Las instalaciones, horarios, mediciones y estados son ficticios.
+
+No utilizar nombres de estudiantes ni personal real.
+
+FUENTES DOCUMENTALES:
+
+ENFEN:
+https://enfen.imarpe.gob.pe/comunicados/
+
+SENAMHI:
+https://www.senamhi.gob.pe/
+
+INDECI:
+https://www.gob.pe/indeci
+
+CENEPRED:
+https://sigrid.cenepred.gob.pe/sigridv3/
+
+UNT, antecedentes institucionales de 2025:
+https://www.unitru.edu.pe/noticia_item.aspx?IDNoticia=1772
+https://unitru.edu.pe/noticia_item.aspx?IDNoticia=1774
+
+OSM:
+https://www.openstreetmap.org/copyright
+
+Estas referencias son documentales, no conexiones en tiempo real.
+
+No inventar valores meteorológicos oficiales.
+
+Usar la fecha real del documento cuando sea conocida y verificable.
+
+Si no se conoce, mostrar "Fecha no verificada".
+
+El sistema debe identificar claramente cuándo muestra un hecho histórico y cuándo un ejercicio simulado.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+8. MODO DEMOSTRACIÓN: EL MOMENTO WOW
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Crea una pantalla especial:
+
+/demo
+
+Título:
+"Simulación de continuidad operativa"
+
+Subtítulo:
+"Observa cómo NEXO transforma un incidente en acciones verificables."
+
+Diseña una experiencia inmersiva especialmente preparada para un jurado.
+
+LAYOUT:
+
+Izquierda:
+Línea de tiempo.
+
+Centro:
+Grafo animado.
+
+Derecha:
+Acciones, decisiones y continuidad.
+
+Abajo:
+Controles de reproducción.
+
+BOTÓN PRINCIPAL:
+"INICIAR ESCENARIO"
+
+SECUENCIA DE 90 SEGUNDOS:
+
+00s:
+Estado inicial. Servicios operativos.
+
+10s:
+Mostrar una fuente documental de referencia.
+
+20s:
+Se registra lluvia intensa simulada.
+
+30s:
+Incrementar índice de atención operativa.
+
+40s:
+Se registra una interrupción eléctrica ficticia.
+
+50s:
+El grafo resalta servicios dependientes y solicita verificación.
+
+60s:
+El motor genera acciones y un borrador de comunicación.
+
+65s:
+Pausar para revisión humana.
+
+Mostrar:
+"Este mensaje requiere aprobación antes de su difusión simulada."
+
+El usuario puede:
+Aprobar como Autoridad.
+Rechazar.
+Continuar sin difundir.
+
+No autorizar automáticamente.
+
+75s:
+Mostrar resultado de la decisión y continuidad potencialmente afectada.
+
+85s:
+Abrir explicación de las reglas y fuentes relacionadas.
+
+90s:
+Mostrar resumen final de la simulación.
+
+RESUMEN:
+
+- Servicios que requieren verificación.
+- Acciones generadas.
+- Acciones pendientes.
+- Actividades afectadas.
+- Comunicaciones aprobadas.
+- Confirmaciones de lectura.
+- Decisiones registradas.
+
+Todos estos indicadores deben provenir del estado.
+
+CONTROLES:
+
+Reproducir.
+Pausar.
+Avanzar paso.
+Retroceder paso.
+Reiniciar.
+0.5x.
+1x.
+2x.
+Pantalla completa.
+
+El timeline debe poder repetirse sin duplicar acciones.
+
+El cronómetro se detiene durante la aprobación humana.
+
+Incluye modo "Presentación" sin navegación secundaria, pero conservando los avisos de simulación.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+9. EXPERIENCIA DIFERENCIADORA ADICIONAL
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Implementa dos capacidades que hagan que NEXO destaque frente a un dashboard convencional.
+
+A. EXPLORACIÓN "¿QUÉ PASARÍA SI...?"
+
+Desde el centro de control:
+
+Botón:
+"Explorar alternativas"
+
+Abrir un panel comparativo con dos estados.
+
+Escenario actual:
+Electricidad no disponible.
+
+Escenario alternativo:
+Electricidad restablecida.
+
+Mostrar qué cambia:
+- Servicios por verificar.
+- Acciones activas.
+- Actividades potencialmente afectadas.
+- Índice de atención.
+- Estado de continuidad.
+
+No modificar el escenario original hasta que el usuario confirme aplicar la alternativa.
+
+B. INSPECTOR DE DECISIONES
+
+Cualquier acción o recomendación tendrá un botón:
+"Ver fundamento".
+
+Al pulsarlo, abrir un drawer lateral que explique de forma visual:
+
+Entrada → Regla → Dependencia → Resultado.
+
+Mostrar fuente, versión, evidencia y limitaciones.
+
+Estas dos capacidades deben funcionar con el motor real y no con contenido fijo.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+10. INTELIGENCIA ARTIFICIAL
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+El núcleo de NEXO no depende de IA generativa.
+
+Las decisiones y cálculos deben utilizar reglas deterministas.
+
+Añade opcionalmente un módulo:
+"Explicar con IA"
+
+Su función será convertir las salidas estructuradas en explicaciones comprensibles.
+
+La IA no puede:
+Inventar riesgos.
+Modificar reglas.
+Emitir alertas.
+Aprobar decisiones.
+Crear fuentes falsas.
+Declarar rutas seguras.
+
+Si existe integración segura con Gemini, utiliza el SDK oficial y secretos del servidor.
+
+Si no existe backend seguro, NO envíes claves desde el navegador.
+
+Implementa siempre una explicación local mediante plantillas, totalmente funcional sin API.
+
+Las salidas deben ser validadas y mostrar:
+"Explicación asistida, requiere revisión humana", cuando corresponda.
+
+No presentar respuestas de respaldo local como si fueran generadas por Gemini.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+11. SEGURIDAD, ÉTICA Y RESPONSABILIDAD
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Aviso permanente:
+
+"Prototipo académico. Escenario simulado. No reemplaza las alertas oficiales."
+
+NO:
+- Datos personales reales.
+- Conexiones a sistemas productivos.
+- Alertas reales.
+- Supuestas predicciones oficiales.
+- Zonas seguras inventadas.
+- Rutas de evacuación reales no validadas.
+- Envío de mensajes externos.
+- Decisiones automáticas de seguridad física.
+
+Mantén supervisión humana obligatoria.
+
+Toda información inventada debe conservar la etiqueta:
+"Escenario simulado".
+
+Incluye:
+Panel de privacidad.
+Fuentes consultables.
+Atribución OpenStreetMap.
+Créditos de bibliotecas.
+Registro de auditoría local.
+
+La bitácora del navegador no debe presentarse como registro institucional inalterable.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+12. CALIDAD, PRUEBAS Y RENDIMIENTO
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Quiero una aplicación robusta, no una demostración frágil.
+
+REQUISITOS:
+
+TypeScript estricto.
+Navegación funcional.
+Estado sincronizado.
+Motores deterministas.
+Sin errores de consola.
+Responsive.
+Accesibilidad WCAG AA.
+Modo oscuro.
+Manejo de errores.
+Fallback offline.
+Persistencia segura.
+Exportaciones reales.
+
+Cada pantalla necesita estados:
+Cargando.
+Sin datos.
+Error.
+Sin conexión.
+Operativo.
+
+Optimiza carga inicial con lazy loading de módulos secundarios.
+
+No cargar Leaflet hasta que se abra el mapa.
+
+Implementa pruebas para:
+- Cálculo del índice.
+- Reglas.
+- Dependencias.
+- Evitar ciclos.
+- Permisos.
+- Aprobación.
+- Continuidad.
+- Reproducción del escenario.
+
+CRITERIOS DE ACEPTACIÓN:
+
+1. Cambiar un escenario modifica el estado global.
+2. Los KPI se recalculan.
+3. Las reglas activan acciones correctas.
+4. Las dependencias se actualizan.
+5. Los estados muestran su procedencia.
+6. Los permisos por rol funcionan.
+7. Las acciones pueden cambiar de estado.
+8. Las comunicaciones requieren aprobación.
+9. Las comunicaciones rechazadas no se difunden.
+10. Las lecturas simuladas requieren interacción.
+11. Las actividades responden a restricciones.
+12. El índice puede explicarse matemáticamente.
+13. Los mapas distinguen realidad y simulación.
+14. La bitácora registra los cambios.
+15. Las exportaciones funcionan.
+16. La demo puede reiniciarse sin duplicaciones.
+17. El sistema funciona sin Gemini.
+18. Las pantallas funcionan en móvil.
+19. Ningún botón importante queda sin funcionalidad.
+20. El proyecto compila y ejecuta las pruebas disponibles.
+
+No afirmar resultados de prueba que no hayas ejecutado.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+13. ORDEN DE CONSTRUCCIÓN
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Trabaja internamente por etapas, conservando el proyecto ejecutable.
+
+ETAPA 1:
+Sistema de diseño, navegación, estructura y componentes.
+
+ETAPA 2:
+Modelos de datos, fixtures, Zustand y persistencia.
+
+ETAPA 3:
+Motor de reglas, dependencias, índice de atención y continuidad.
+
+ETAPA 4:
+Centro de control, escenarios, acciones y explicabilidad.
+
+ETAPA 5:
+Mapa, prevención, protocolos y coordinación.
+
+ETAPA 6:
+Comunicaciones, aprobación humana, vista comunidad y bitácora.
+
+ETAPA 7:
+Modo demo de 90 segundos y comparación "¿Qué pasaría si...?".
+
+ETAPA 8:
+Pulido visual, responsive, accesibilidad, pruebas y README.
+
+No continúes una etapa dejando errores de compilación sin resolver.
+
+Si una librería externa falla, usa una alternativa compatible sin eliminar el módulo.
+
+No reemplaces la lógica con pantallas falsas.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+RESULTADO FINAL ESPERADO
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+La aplicación debe permitir que un jurado realice esta experiencia completa:
+
+1. Entra a NEXO UNT.
+2. Observa un centro de control profesional.
+3. Selecciona una interrupción eléctrica ficticia.
+4. Cambian los indicadores.
+5. El grafo muestra dependencias.
+6. Se generan acciones justificadas.
+7. Consulta por qué apareció una recomendación.
+8. Explora una alternativa de continuidad.
+9. Prepara una comunicación.
+10. Cambia al rol Autoridad y la aprueba.
+11. Consulta la comunicación como estudiante.
+12. Revisa el historial de decisiones.
+13. Reproduce la simulación de 90 segundos.
+14. Exporta los resultados.
+
+Toda esta secuencia debe funcionar de extremo a extremo.
+
+PRIORIZA:
+
+Primero: funcionalidad y consistencia.
+Segundo: diferenciación e innovación.
+Tercero: excelencia de diseño y experiencia.
+Cuarto: claridad, seguridad y trazabilidad.
+
+NEXO UNT debe sentirse como una herramienta GovTech profesional, con la madurez visual de una startup seria y una lógica suficientemente transparente para ser defendida ante un jurado exigente.
+
+Construye ahora la aplicación. No entregues solamente un plan: genera los archivos, implementa las funcionalidades, verifica la compilación y deja el proyecto ejecutable.
