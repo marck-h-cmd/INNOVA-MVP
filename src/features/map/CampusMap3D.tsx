@@ -82,17 +82,25 @@ export function CampusMap3D() {
     try {
       if (!document.fullscreenElement) {
         if (wrapperRef.current) {
-          if (wrapperRef.current.requestFullscreen) {
-            await wrapperRef.current.requestFullscreen();
-          } else if ((wrapperRef.current as HTMLElement & { webkitRequestFullscreen?: () => Promise<void> }).webkitRequestFullscreen) {
-            await (wrapperRef.current as HTMLElement & { webkitRequestFullscreen: () => Promise<void> }).webkitRequestFullscreen();
+          const el = wrapperRef.current as unknown as {
+            requestFullscreen?: () => Promise<void>;
+            webkitRequestFullscreen?: () => Promise<void>;
+          };
+          if (el.requestFullscreen) {
+            await el.requestFullscreen();
+          } else if (el.webkitRequestFullscreen) {
+            await el.webkitRequestFullscreen();
           }
         }
       } else {
-        if (document.exitFullscreen) {
-          await document.exitFullscreen();
-        } else if ((document as Document & { webkitExitFullscreen?: () => Promise<void> }).webkitExitFullscreen) {
-          await (document as Document & { webkitExitFullscreen: () => Promise<void> }).webkitExitFullscreen();
+        const doc = document as unknown as {
+          exitFullscreen?: () => Promise<void>;
+          webkitExitFullscreen?: () => Promise<void>;
+        };
+        if (doc.exitFullscreen) {
+          await doc.exitFullscreen();
+        } else if (doc.webkitExitFullscreen) {
+          await doc.webkitExitFullscreen();
         }
       }
     } catch (err) {
