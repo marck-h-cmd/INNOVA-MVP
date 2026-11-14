@@ -5,6 +5,7 @@ coverage/
 .DS_Store
 Thumbs.db
 *.log
+*.pdf
 .env*
 !.env.example
 .aistudio/

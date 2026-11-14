@@ -7,7 +7,7 @@ WORKDIR /app
 
 # Install dependencies (cached if package files don't change)
 COPY package.json package-lock.json ./
-RUN npm ci
+RUN npm ci || npm install
 
 # Copy source and build static frontend
 COPY . .
@@ -25,7 +25,7 @@ ENV PORT=3000
 
 # Install production dependencies only
 COPY package.json package-lock.json ./
-RUN npm ci --omit=dev && npm cache clean --force
+RUN (npm ci --omit=dev || npm install --omit=dev) && npm cache clean --force
 
 # Copy compiled frontend from builder
 COPY --from=builder --chown=node:node /app/dist ./dist
