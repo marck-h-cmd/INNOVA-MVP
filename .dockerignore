@@ -1,0 +1,27 @@
+# Git and version control
+.git
+.gitignore
+.gitattributes
+.github
+
+# Node dependencies and build artifacts
+node_modules
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+dist
+build
+coverage
+
+# Environment variables & secrets
+.env
+.env.*
+!.env.example
+
+# AI / IDE / OS specific files
+.aistudio
+.vscode
+.idea
+.DS_Store
+Thumbs.db
+*.log
